@@ -1,4 +1,4 @@
-const axios = require("axios");
+import axios from "axios";
 
 async function activateVendorAccess(data) {
   try {
@@ -24,4 +24,4 @@ async function activateVendorAccess(data) {
   }
 }
 
-module.exports = { activateVendorAccess };
+export default activateVendorAccess;

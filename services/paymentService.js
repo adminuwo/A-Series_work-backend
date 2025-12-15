@@ -1,5 +1,5 @@
-const db = require("../db/db");
-const { activateVendorAccess } = require("./vendorGateway");
+import db  from "../db/db";
+import activateVendorAccess  from "./vendorGateway";
 
 async function handlePaymentSuccess(payload) {
   const {
@@ -39,4 +39,4 @@ async function handlePaymentSuccess(payload) {
   });
 }
 
-module.exports = { handlePaymentSuccess };
+export default  handlePaymentSuccess 
