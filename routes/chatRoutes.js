@@ -70,9 +70,6 @@ router.post('/:sessionId/message', async (req, res) => {
       { $addToSet: { chatSessions: session._id } },
       { new: true }
     );
-
-    console.log("User chatSessions:", updatedUser.chatSessions);
-
     res.json(session);
   } catch (err) {
     console.error(err);

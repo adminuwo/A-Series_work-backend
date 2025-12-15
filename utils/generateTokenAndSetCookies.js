@@ -1,9 +1,8 @@
 import jwt from "jsonwebtoken";
-import { SECRET, TOKEN_EX } from "./consts.js";
 
 export default function generateTokenAndSetCookies(res, data) {
-    const sceret = process.env.SECRET || SECRET
-    const tokenEx= process.env.TOKEN_EX || TOKEN_EX
+    const sceret = process.env.SECRET 
+    const tokenEx= process.env.TOKEN_EX 
     const token = jwt.sign({ email: data }, sceret, { expiresIn: tokenEx })
   res.cookie("token", token, {
     httpOnly: true,  
