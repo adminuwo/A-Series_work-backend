@@ -41,6 +41,28 @@ router.post("/", async (req, res) => {
     return res.status(500).json({ error: "AI failed to respond" });
   }
 });
+router.get('/', async (req, res) => {
+  try {
+    const sessions = await ChatSession.find()
+      .select('sessionId title lastModified')
+      .sort({ lastModified: -1 });
+    res.json(sessions);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch sessions' });
+  }
+});
+
+// Get chat history for a specific session
+router.get('/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params; 
+    let session = await ChatSession.findOne({ sessionId });
+    if (!session) return res.status(404).json({ message: 'Session not found' });
+    res.json(session);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch chat history' });
+  }
+});
 
 // Create or Update message in session
 router.post('/:sessionId/message', async (req, res) => {
