@@ -154,18 +154,17 @@ export const Welcome_Email_Template = `
           <div class="header">Welcome to Our Community!</div>
           <div class="content">
               <p class="welcome-message">Hello {name},</p>
-              <p>We’re thrilled to have you join us! Your registration was successful, and we’re committed to providing you with the best experience possible.</p>
+              <p>We’re thrilled to have you join us! Your registration was successful, and we’re committed to providing AI plateform to You with the best experience possible.</p>
               <p>Here’s how you can get started:</p>
               <ul>
                   <li>Explore our features and customize your experience.</li>
-                  <li>Stay informed by checking out our blog for the latest updates and tips.</li>
+                  <li>Stay informed by checking out our page for the latest updates and tips.</li>
                   <li>Reach out to our support team if you have any questions or need assistance.</li>
               </ul>
               <a href="#" class="button">Get Started</a>
-              <p>If you need any help, don’t hesitate to contact us. We’re here to support you every step of the way.</p>
           </div>
           <div class="footer">
-              <p>&copy; ${new Date().getFullYear()} Your Company. All rights reserved.</p>
+              <p>&copy; ${new Date().getFullYear()} ${process.env.APP_NAME}. All rights reserved.</p>
           </div>
       </div>
   </body>
