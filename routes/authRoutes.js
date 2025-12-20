@@ -48,7 +48,7 @@ router.post("/signup", async (req, res) => {
     res.cookie("email", newUser.email)
 
     // Send OTP email
-    await sendVerificationEmail(newUser.email, newUser.verificationCode);
+    await sendVerificationEmail(newUser.email, newUser.name,newUser.verificationCode);
 
     res.status(201).json({
       id: newUser._id,
