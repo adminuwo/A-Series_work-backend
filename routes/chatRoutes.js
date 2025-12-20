@@ -23,9 +23,6 @@ router.post("/", async (req, res) => {
       const text =
         chunk?.candidates?.[0]?.content?.parts?.[0]?.text || null;
 
-      if (text) {
-        console.log("stream text:", text);
-      }
     }
 
 
