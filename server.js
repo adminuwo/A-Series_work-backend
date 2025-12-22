@@ -9,8 +9,7 @@ import agentRoutes from "./routes/agentRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import cookieParser from "cookie-parser";
 import emailVatifiation from "./routes/emailVerification.js"
-import agent from "./routes/agentRoutes.js"
-
+import userRoute from './routes/user.js'
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT 
@@ -30,6 +29,10 @@ app.get("/", (req, res) => {
 // Mount Routes
 // Auth Routes: /api/auth/login, /api/auth/signup
 app.use('/api/auth', authRoutes);
+
+//Get user Route
+
+app.use('/api/user',userRoute)
 
 // Chat Routes: /api/chat (GET sessions), /api/chat/:id (GET history), /api/chat/:id/message (POST message)
 app.use('/api/chat', chatRoutes);

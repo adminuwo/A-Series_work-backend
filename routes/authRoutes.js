@@ -43,18 +43,18 @@ router.post("/signup", async (req, res) => {
     });
 
     // Generate token cookie
-    generateTokenAndSetCookies(res, newUser.email);
+    const token = generateTokenAndSetCookies(res, newUser._id, newUser.email, newUser.name);
 
-    res.cookie("email", newUser.email)
-
+    
     // Send OTP email
-    await sendVerificationEmail(newUser.email, newUser.name,newUser.verificationCode);
+    await sendVerificationEmail(newUser.email, newUser.name, newUser.verificationCode);
 
     res.status(201).json({
       id: newUser._id,
       name: newUser.name,
       email: newUser.email,
       message: "Verification code sent successfully",
+      token:token
     });
   } catch (err) {
     console.error("Signup Error:", err);
@@ -80,13 +80,14 @@ router.post("/login", async (req, res) => {
     }
 
     // Generate token
-    generateTokenAndSetCookies(res, user.email);
+    const token = generateTokenAndSetCookies(res, user._id, user.email, user.name);
 
     res.status(201).json({
       id: user._id,
       name: user.name,
       email: user.email,
-      message: "LogIn Successfully"
+      message: "LogIn Successfully",
+      token: token
     });
 
   } catch (err) {

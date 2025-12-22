@@ -1,10 +1,11 @@
 import express from 'express'
 import agentModel from '../models/Agents.js'
 import userModel from "../models/User.js"
+import { verifyToken } from '../middleware/Authorization.js'
 const route = express.Router()
 
 //get all agents
-route.get("/", async (req, res) => {
+route.get("/", verifyToken,async (req, res) => {
   const agents = await agentModel.find()
   res.status(200).json(agents)
 })

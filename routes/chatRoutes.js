@@ -3,6 +3,7 @@ import express from "express"
 import ChatSession from "../models/ChatSession.js"
 import { generativeModel } from "../config/vertex.js";
 import userModel from "../models/User.js";
+import { verifyToken } from "../middleware/Authorization.js";
 
 
 const router = express.Router();
@@ -52,7 +53,7 @@ router.get('/', async (req, res) => {
 // Get chat history for a specific session
 router.get('/:sessionId', async (req, res) => {
   try {
-    const { sessionId } = req.params; 
+    const { sessionId } = req.params;
     let session = await ChatSession.findOne({ sessionId });
     if (!session) return res.status(404).json({ message: 'Session not found' });
     res.json(session);
@@ -62,10 +63,11 @@ router.get('/:sessionId', async (req, res) => {
 });
 
 // Create or Update message in session
-router.post('/:sessionId/message', async (req, res) => {
+router.post('/:sessionId/message', verifyToken, async (req, res) => {
   try {
     const { sessionId } = req.params;
-    const { message, title, userId } = req.body;
+    const { message, title } = req.body;
+    const userId = req.user.id
 
     if (!message?.role || !message?.content) {
       return res.status(400).json({ error: 'Invalid message format' });
