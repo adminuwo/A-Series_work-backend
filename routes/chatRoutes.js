@@ -3,7 +3,7 @@ import express from "express"
 import ChatSession from "../models/ChatSession.js"
 import { generativeModel } from "../config/vertex.js";
 import userModel from "../models/User.js";
-import { verifyToken } from "../middleware/Authorization.js";
+import { verifyToken } from "../middleware/authorization.js";
 
 
 const router = express.Router();
