@@ -66,7 +66,7 @@ router.get('/:sessionId', async (req, res) => {
 });
 
 // Create or Update message in session
-router.post('/:sessionId/message', verifyToken, async (req, res) => {
+router.post('/:sessionId/message', async (req, res) => {
   try {
     const { sessionId } = req.params;
     const { message, title } = req.body;

@@ -4,10 +4,17 @@ import { verifyToken } from "../middleware/authorization.js"
 const route = express.Router()
 
 route.get("/", verifyToken, async (req, res) => {
-    res.send("this is user route")
-    console.log(req.user.id);
+    try {
 
-    // const user = await userModel.findById()
+        console.log(req.user.id);
+        const userId = req.user.id
+
+        const user = await userModel.findById(userId)
+        res.status(200).json(user)
+    } catch (error) {
+        res.send({ msg: "somthing went wrong" })
+    }
+
 })
 
 export default route
