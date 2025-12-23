@@ -10,7 +10,6 @@ export default function generateTokenAndSetCookies(res,id, email,name) {
     sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
   });
-   console.log(token);
    return token
    
 }

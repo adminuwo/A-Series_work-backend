@@ -70,6 +70,8 @@ router.post('/:sessionId/message',verifyToken, async (req, res) => {
     const { sessionId } = req.params;
     const { message, title } = req.body;
     const userId = req.user.id
+    console.log("userId:",userId);
+    
 
     if (!message?.role || !message?.content) {
       return res.status(400).json({ error: 'Invalid message format' });

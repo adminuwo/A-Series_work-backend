@@ -11,6 +11,8 @@ export const sendVerificationEmail = async (email, name, verificationCode) => {
       subject: "Verify Your Email",
       html: Verification_Email_Template.replace("{name}", name).replace("{verificationCode}", verificationCode)
     })
+    console.log("resend_msg", response);
+
   } catch (error) {
     console.log('Email error', error)
   }
@@ -22,7 +24,7 @@ export const welcomeEmail = async (name, email) => {
     from: `AI-MALL <${process.env.EMAIL}>`,
     to: [email],
     subject: `Welcome ${name}`,
-    html: Welcome_Email_Template.replace("{name}", name).replace("{dashboardUrl}",marketPlace),
+    html: Welcome_Email_Template.replace("{name}", name).replace("{dashboardUrl}", marketPlace),
   });
 };
 
