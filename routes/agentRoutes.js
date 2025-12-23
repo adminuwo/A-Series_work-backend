@@ -5,7 +5,7 @@ import { verifyToken } from '../middleware/authorization.js'
 const route = express.Router()
 
 //get all agents
-route.get("/", verifyToken,async (req, res) => {
+route.get("/",async (req, res) => {
   const agents = await agentModel.find()
   res.status(200).json(agents)
 })

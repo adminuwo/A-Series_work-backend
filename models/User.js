@@ -27,6 +27,10 @@ const userSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "Agent"
     }],
+    role: {
+        type: String,
+        default: "user"
+    },
     chatSessions: [{ type: mongoose.Schema.Types.ObjectId, ref: "ChatSession" }],
     verificationCode: Number
 
