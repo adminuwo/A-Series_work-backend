@@ -15,6 +15,7 @@ import pdfRoutes from './routes/pdfRoutes.js';
 import aibizRoutes from './routes/aibizRoutes.js';
 import fileUpload from 'express-fileupload';
 import * as aibaseService from './services/aibaseService.js';
+import supportRoutes from './routes/supportRoutes.js';
 
 
 dotenv.config();
@@ -75,6 +76,9 @@ app.use('/api/pdf', pdfRoutes);
 
 // AIBIZ Routes
 app.use('/api/aibiz', aibizRoutes);
+
+// Support Routes
+app.use('/api/support', supportRoutes);
 
 
 // Global Error Handler
