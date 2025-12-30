@@ -1,12 +1,11 @@
-import { MongoDBAtlasVectorSearch } from "@langchain/mongodb";
-import { HuggingFaceTransformersEmbeddings } from "@langchain/community/embeddings/huggingface_transformers";
-import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
-import mongoose from "mongoose";
-import logger from "../utils/logger.js";
-import Knowledge from "../models/Knowledge.model.js";
-import groqService from './groq.service.js';
-import { Worker } from 'worker_threads';
-import path from 'path';
+const { MongoDBAtlasVectorSearch } = require("@langchain/mongodb");
+const { HuggingFaceTransformersEmbeddings } = require("@langchain/community/embeddings/hf_transformers");
+const { RecursiveCharacterTextSplitter } = require("@langchain/textsplitters");
+const mongoose = require("mongoose");
+const logger = require("../utils/logger");
+const Knowledge = require("../models/Knowledge.model");
+const { Worker } = require('worker_threads');
+const path = require('path');
 
 // Initialize Groq Chat Model - REMOVED (Replaced by groq.service.js)
 // const model = new ChatGroq({ ... });
@@ -25,26 +24,24 @@ const initializeVectorStore = async () => {
     }
     if (!vectorStore) {
         if (mongoose.connection.readyState !== 1) {
-            // throw new Error("MongoDB not connected yet");
-            logger.warn("MongoDB pending connection for Vector Store...");
+            throw new Error("MongoDB not connected yet");
         }
 
-        if (mongoose.connection.db) {
-            const collection = mongoose.connection.db.collection("knowledge_vectors");
-            vectorStore = new MongoDBAtlasVectorSearch(embeddings, {
-                collection: collection,
-                indexName: "default",
-                textKey: "text",
-                embeddingKey: "embedding",
-            });
-            logger.info("MongoDB Atlas Vector Store initialized.");
-        }
+        const collection = mongoose.connection.db.collection("knowledge_vectors");
+
+        vectorStore = new MongoDBAtlasVectorSearch(embeddings, {
+            collection: collection,
+            indexName: "default",
+            textKey: "text",
+            embeddingKey: "embedding",
+        });
+        logger.info("MongoDB Atlas Vector Store initialized.");
     }
 };
 
 // Helper: Run embedding task in worker - REMOVED
 
-export const storeDocument = async (text, docId = null) => {
+exports.storeDocument = async (text, docId = null) => {
     try {
         await initializeVectorStore();
 
@@ -79,7 +76,9 @@ export const storeDocument = async (text, docId = null) => {
     }
 };
 
-export const chat = async (message, activeDocContent = null) => {
+const groqService = require('./groq.service');
+
+exports.chat = async (message, activeDocContent = null) => {
     try {
         if (!message || typeof message !== 'string') {
             message = String(message || "");
@@ -123,7 +122,7 @@ export const chat = async (message, activeDocContent = null) => {
                 console.log(`--- Chunk ${index + 1} ---`);
                 console.log("Score:", score);
                 console.log("Source:", doc.metadata?.source || doc.metadata?.filename || "Unknown");
-                console.log("Text Preview:", doc.pageContent.slice(0, 200).replace(/\\n/g, ' '));
+                console.log("Text Preview:", doc.pageContent.slice(0, 200).replace(/\n/g, ' '));
             });
             console.log("================================");
 
@@ -137,13 +136,13 @@ export const chat = async (message, activeDocContent = null) => {
             if (relevantDocs.length > 0) {
                 contextText = relevantDocs
                     .map(([doc, _]) => doc.pageContent || "")
-                    .join("\\n\\n");
+                    .join("\n\n");
                 logger.info(`[RAG] Found ${relevantDocs.length} RELEVANT docs (Score >= ${THRESHOLD}).`);
 
                 // IMPORTANT: If we found RAG docs, the prompt in GroqService interprets this as "Your Document".
                 // Ideally we want to distinguish "Company Documents" vs "Chat Upload".
                 // Since GroqService just has one "Context" slot, we can prepend a header to contextText.
-                contextText = "SOURCE: COMPANY KNOWLEDGE BASE\\n\\n" + contextText;
+                contextText = "SOURCE: COMPANY KNOWLEDGE BASE\n\n" + contextText;
 
                 // PRIORITY 2: Answer from Company RAG
                 return await groqService.askGroq(message, contextText);
@@ -164,20 +163,20 @@ export const chat = async (message, activeDocContent = null) => {
 };
 
 // Initialize from DB (Now just a placeholder/connection check)
-export const initializeFromDB = async () => {
+exports.initializeFromDB = async () => {
     try {
         logger.info("Using MongoDB Atlas Vector Search. Persistence is handled natively.");
-        // await initializeVectorStore(); // Lazy load to avoid startup issues if DB not ready
+        await initializeVectorStore();
     } catch (error) {
         logger.error(`Failed to initialize Vector Store: ${error.message} `);
     }
 };
 
-export const reloadVectorStore = async () => {
+exports.reloadVectorStore = async () => {
     vectorStore = null;
-    await initializeFromDB();
+    await exports.initializeFromDB();
 };
 
-export const ragChat = async (message) => {
-    return chat(message);
+exports.ragChat = async (message) => {
+    return exports.chat(message);
 };

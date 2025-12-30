@@ -24,8 +24,18 @@ router.post('/chat', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Message is required' });
         }
 
+        console.log('[AIBASE] Received chat message:', message);
+
         // Get AI response using RAG
-        const responseText = await aibaseService.chat(message);
+        let responseText;
+        try {
+            responseText = await aibaseService.chat(message);
+            console.log('[AIBASE] AI response received:', responseText.substring(0, 100) + '...');
+        } catch (aiError) {
+            console.error('[AIBASE] AI Service Error:', aiError.message);
+            console.error('[AIBASE] AI Service Stack:', aiError.stack);
+            throw aiError; // Re-throw to be caught by outer catch
+        }
 
         // Save to conversation
         let conversation;
@@ -52,7 +62,8 @@ router.post('/chat', async (req, res) => {
             conversationId: conversation._id
         });
     } catch (error) {
-        console.error('[AIBASE] Chat Error:', error);
+        console.error('[AIBASE] Chat Error:', error.message);
+        console.error('[AIBASE] Chat Error Stack:', error.stack);
         res.status(500).json({ success: false, message: error.message });
     }
 });

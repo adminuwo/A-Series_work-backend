@@ -10,10 +10,12 @@ import authRoutes from "./routes/authRoutes.js";
 import cookieParser from "cookie-parser";
 import emailVatifiation from "./routes/emailVerification.js"
 import userRoute from './routes/user.js'
-import aibaseRoutes from './routes/aibaseRoutes.js'
+
+import chatRoute from './routes/chat.routes.js';
+import knowledgeRoute from './routes/knowledge.routes.js';
 import pdfRoutes from './routes/pdfRoutes.js';
 import aibizRoutes from './routes/aibizRoutes.js';
-import fileUpload from 'express-fileupload';
+// import fileUpload from 'express-fileupload';
 import * as aibaseService from './services/aibaseService.js';
 
 
@@ -33,7 +35,7 @@ app.use(cors());
 app.use(cookieParser())
 app.use(express.json());
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-app.use(fileUpload()); // For AIBASE file uploads
+// app.use(fileUpload()); // Removed to avoid conflict with Multer (New AIBASE)
 
 app.get("/ping-top", (req, res) => {
   res.send("Top ping works");
@@ -50,7 +52,11 @@ app.use('/api', (req, res, next) => {
 
 // Mount Routes
 // AIBASE Routes: /api/aibase/chat, /api/aibase/knowledge
-app.use('/api/aibase', aibaseRoutes);
+
+
+// AIBASE Routes: /api/aibase/chat, /api/aibase/knowledge
+app.use('/api/aibase/chat', chatRoute);
+app.use('/api/aibase/knowledge', knowledgeRoute);
 
 //Get user Route
 app.use('/api/user', userRoute)
