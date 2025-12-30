@@ -32,7 +32,11 @@ const userSchema = new mongoose.Schema({
         default: "user"
     },
     chatSessions: [{ type: mongoose.Schema.Types.ObjectId, ref: "ChatSession" }],
-    verificationCode: Number
+    verificationCode: Number,
+    isBlocked: {
+        type: Boolean,
+        default: false
+    }
 
 }, { timestamps: true });
 

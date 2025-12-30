@@ -17,6 +17,10 @@ import pdfRoutes from './routes/pdfRoutes.js';
 import aibizRoutes from './routes/aibizRoutes.js';
 // import fileUpload from 'express-fileupload';
 import * as aibaseService from './services/aibaseService.js';
+import reportRoutes from './routes/reportRoutes.js';
+import notificationRoutes from './routes/notificationRoutes.js';
+import revenueRoutes from './routes/revenueRoutes.js';
+import supportRoutes from './routes/supportRoutes.js';
 
 
 dotenv.config();
@@ -81,6 +85,18 @@ app.use('/api/pdf', pdfRoutes);
 
 // AIBIZ Routes
 app.use('/api/aibiz', aibizRoutes);
+
+// Report Routes
+app.use('/api/reports', reportRoutes);
+
+// Notification Routes
+app.use('/api/notifications', notificationRoutes);
+
+// Revenue Routes
+app.use('/api/revenue', revenueRoutes);
+
+// Support Routes
+app.use('/api/support', supportRoutes);
 
 
 // Global Error Handler

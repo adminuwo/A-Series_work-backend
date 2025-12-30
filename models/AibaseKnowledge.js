@@ -16,7 +16,11 @@ const AibaseKnowledgeSchema = new mongoose.Schema({
     userId: {
         type: String,
         default: 'admin'
+    },
+    embedding: {
+        type: [Number],
+        required: false // Optional for now, to support legacy docs
     }
-}, { timestamps: true });
+}, { timestamps: true, collection: 'knowledge_vectors' });
 
 export default mongoose.model('AibaseKnowledge', AibaseKnowledgeSchema);
