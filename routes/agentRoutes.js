@@ -5,7 +5,7 @@ import { verifyToken } from '../middleware/authorization.js'
 const route = express.Router()
 
 //get all agents
-route.get("/",async (req, res) => {
+route.get("/", async (req, res) => {
   const agents = await agentModel.find()
   res.status(200).json(agents)
 })
@@ -59,7 +59,8 @@ route.post('/buy/:id', async (req, res) => {
     }
 
     // Avoid duplicate agent entries
-    if (!user.agents.includes(agentId)) {
+    const isOwned = user.agents.some(id => id.toString() === agentId);
+    if (!isOwned) {
       user.agents.push(agentId);
     } else {
       return res.status(400).json({ error: "Agent already owned" });
@@ -86,7 +87,21 @@ route.post("/get_my_agents", async (req, res) => {
     return res.status(404).send("User Not Found")
   }
   res.status(200).json(user)
-
 })
+
+// Get My Agents (Authenticated)
+route.get("/me", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await userModel.findById(userId).populate("agents");
+    if (!user) {
+      return res.status(404).json({ error: "User Not Found" });
+    }
+    res.status(200).json(user.agents);
+  } catch (err) {
+    console.error("Error fetching my agents:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
 
 export default route
