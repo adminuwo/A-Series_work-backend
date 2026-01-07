@@ -21,6 +21,7 @@ import reportRoutes from './routes/reportRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import revenueRoutes from './routes/revenueRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
+import personalTaskRoutes from './routes/personalTaskRoutes.js';
 
 
 dotenv.config();
@@ -97,6 +98,9 @@ app.use('/api/revenue', revenueRoutes);
 
 // Support Routes
 app.use('/api/support', supportRoutes);
+
+// Personal Assistant Routes
+app.use('/api/personal-assistant/tasks', personalTaskRoutes);
 
 
 // Global Error Handler
