@@ -10,11 +10,11 @@ const messageSchema = new mongoose.Schema({
   },
   content: { type: String, required: true },
   timestamp: { type: Number, default: Date.now },
-  attachment: {
-    type: { type: String, enum: ['image', 'pdf'] },
+  attachments: [{
+    type: { type: String, enum: ['image', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'] },
     url: String,
     name: String
-  }
+  }]
 });
 
 const chatSessionSchema = new mongoose.Schema({

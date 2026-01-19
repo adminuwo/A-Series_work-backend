@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { MONGO_URI } from './env.js';
 import logger from '../utils/logger.js';
 
+console.log("MONGO_URI",MONGO_URI);
 const connectDB = async () => {
   try {
     const conn = await mongoose.connect(MONGO_URI, {

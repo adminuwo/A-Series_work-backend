@@ -38,9 +38,19 @@ router.post("/", async (req, res) => {
     // Add current message
     parts.push({ text: `User: ${content}` });
 
-    // Handle Image Attachment
-    // 'image' is already destructured from req.body above
-    if (image && image.mimeType && image.base64Data) {
+    // Handle Multiple Images
+    if (Array.isArray(image)) {
+      image.forEach(img => {
+        if (img.mimeType && img.base64Data) {
+          parts.push({
+            inlineData: {
+              mimeType: img.mimeType,
+              data: img.base64Data
+            }
+          });
+        }
+      });
+    } else if (image && image.mimeType && image.base64Data) {
       parts.push({
         inlineData: {
           mimeType: image.mimeType,
@@ -49,25 +59,37 @@ router.post("/", async (req, res) => {
       });
     }
 
-    // Handle Document Attachment
-    if (document && document.base64Data) {
-      if (document.mimeType === 'application/pdf') {
-        parts.push({
+    // Handle Multiple Documents
+    if (Array.isArray(document)) {
+      for (const doc of document) {
+        await processDocumentPart(doc, parts);
+      }
+    } else if (document && document.base64Data) {
+      await processDocumentPart(document, parts);
+    }
+
+    async function processDocumentPart(doc, partsArray) {
+      if (doc.mimeType === 'application/pdf') {
+        partsArray.push({
           inlineData: {
-            data: document.base64Data,
+            data: doc.base64Data,
             mimeType: 'application/pdf'
           }
         });
-      } else if (document.mimeType.includes('word') || document.mimeType.includes('document')) {
-        // Extract text for DOCX
+      } else if (doc.mimeType && (doc.mimeType.includes('word') || doc.mimeType.includes('document') || doc.mimeType.includes('text') || doc.mimeType.includes('spreadsheet') || doc.mimeType.includes('presentation'))) {
         try {
-          const buffer = Buffer.from(document.base64Data, 'base64');
-          const result = await mammoth.extractRawText({ buffer });
-          const text = result.value;
-          parts.push({ text: `[Attached Document Content]:\n${text}` });
+          const buffer = Buffer.from(doc.base64Data, 'base64');
+          let text = '';
+          if (doc.mimeType.includes('word') || doc.mimeType.includes('document')) {
+            const result = await mammoth.extractRawText({ buffer });
+            text = result.value;
+          } else {
+            text = `[Attached File: ${doc.name || 'document'}]`;
+          }
+          partsArray.push({ text: `[Attached Document Content (${doc.name || 'document'})]:\n${text}` });
         } catch (e) {
-          console.error("Docx extraction failed", e);
-          parts.push({ text: `[Error reading attached document: ${e.message}]` });
+          console.error("Extraction failed", e);
+          partsArray.push({ text: `[Error reading attached document: ${e.message}]` });
         }
       }
     }
@@ -202,28 +224,31 @@ router.post('/:sessionId/message', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid message format' });
     }
 
-    // Cloudinary Upload Logic for Attachments (Base64 -> Cloud URL)
-    // We must do this BEFORE saving to MongoDB to prevent big payloads in DB
-    if (message.attachment && message.attachment.url && message.attachment.url.startsWith('data:')) {
-      try {
-        const matches = message.attachment.url.match(/^data:(.+);base64,(.+)$/);
-        if (matches) {
-          const mimeType = matches[1];
-          const base64Data = matches[2];
-          const buffer = Buffer.from(base64Data, 'base64');
+    // Cloudinary Upload Logic for Multiple Attachments
+    if (message.attachments && Array.isArray(message.attachments)) {
+      for (const attachment of message.attachments) {
+        if (attachment.url && attachment.url.startsWith('data:')) {
+          try {
+            const matches = attachment.url.match(/^data:(.+);base64,(.+)$/);
+            if (matches) {
+              const mimeType = matches[1];
+              const base64Data = matches[2];
+              const buffer = Buffer.from(base64Data, 'base64');
 
-          // Upload to Cloudinary
-          const uploadResult = await uploadToCloudinary(buffer, {
-            resource_type: 'auto',
-            folder: 'chat_attachments',
-            public_id: `chat_${sessionId}_${Date.now()}`
-          });
+              // Upload to Cloudinary
+              const uploadResult = await uploadToCloudinary(buffer, {
+                resource_type: 'auto',
+                folder: 'chat_attachments',
+                public_id: `chat_${sessionId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+              });
 
-          // Update message with Cloudinary URL
-          message.attachment.url = uploadResult.secure_url;
+              // Update attachment with Cloudinary URL
+              attachment.url = uploadResult.secure_url;
+            }
+          } catch (uploadError) {
+            console.error("Cloudinary upload failed for attachment:", uploadError);
+          }
         }
-      } catch (uploadError) {
-        console.error("Cloudinary upload failed, falling back to Base64 storage:", uploadError);
       }
     }
 

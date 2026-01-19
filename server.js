@@ -23,6 +23,7 @@ import revenueRoutes from './routes/revenueRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
 import personalTaskRoutes from './routes/personalTaskRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
+import voiceRoutes from './routes/voiceRoutes.js';
 
 
 dotenv.config();
@@ -102,6 +103,9 @@ app.use('/api/support', supportRoutes);
 app.use('/api/personal-task', personalTaskRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/personal-assistant/tasks', personalTaskRoutes);
+
+// Voice Routes
+app.use('/api/voice', voiceRoutes);
 
 
 // Global Error Handler
