@@ -10,6 +10,11 @@ const notificationSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    title: {
+        type: String,
+        required: false,
+        default: 'Notification'
+    },
     type: {
         type: String,
         enum: ['info', 'success', 'warning', 'error'],

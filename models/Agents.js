@@ -75,6 +75,11 @@ const AgentSchema = new mongoose.Schema(
             default: {}
         },
 
+        pricingModel: {
+            type: String,
+            default: "Free"
+        },
+
         access: {
             type: AccessSchema,
             default: {}

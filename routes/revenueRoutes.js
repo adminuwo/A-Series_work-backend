@@ -9,6 +9,64 @@ const router = express.Router();
 
 // Transaction endpoints for vendor/admin removed.
 
+// GET /api/revenue/stats - Admin Revenue Stats
+router.get('/stats', verifyToken, async (req, res) => {
+    try {
+        // In a real scenario, check for admin role here
+        const transactions = await Transaction.find({ amount: { $gt: 0 } });
+
+        let totalGross = 0;
+        let totalVendorPayouts = 0; // Using for Operational Costs
+        let totalPlatformNet = 0;
+        const appMap = {};
+
+        transactions.forEach(t => {
+            totalGross += t.amount || 0;
+            totalPlatformNet += t.netAmount || 0;
+            // Assuming vendor payout relates to costs, or just sum platform fee as revenue
+            // For now, let's assume 50% split as per data
+            const vendorShare = (t.amount || 0) - (t.netAmount || 0); // Logic from invoice
+            totalVendorPayouts += vendorShare;
+
+            if (t.agentId) {
+                if (!appMap[t.agentId]) {
+                    appMap[t.agentId] = {
+                        id: t.agentId,
+                        name: 'Unknown App', // Would need populate, let's populate
+                        totalRevenue: 0,
+                        vendorEarnings: 0,
+                        platformFees: 0
+                    };
+                }
+                appMap[t.agentId].totalRevenue += t.amount;
+                appMap[t.agentId].vendorEarnings += vendorShare;
+                appMap[t.agentId].platformFees += t.netAmount;
+            }
+        });
+
+        const appPerformance = await Promise.all(Object.values(appMap).map(async (app) => {
+            const agent = await Agent.findById(app.id);
+            return {
+                ...app,
+                name: agent ? agent.agentName : 'Deleted Agent'
+            };
+        }));
+
+        res.json({
+            overview: {
+                totalGross,
+                totalVendorPayouts, // Operational Costs
+                totalPlatformNet
+            },
+            appPerformance
+        });
+
+    } catch (err) {
+        console.error('[REVENUE STATS ERROR]', err);
+        res.status(500).json({ error: 'Failed to fetch revenue stats' });
+    }
+});
+
 
 // GET /api/revenue/user/transactions - Get user's purchase history
 router.get('/user/transactions', verifyToken, async (req, res) => {

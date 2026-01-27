@@ -7,10 +7,32 @@ import { sendAdminNotification, sendVendorReply } from '../services/emailService
 const router = express.Router();
 
 // GET /api/reports (Admin only - fetch all reports)
+// GET /api/reports (Admin only - fetch all reports)
 router.get('/', verifyToken, async (req, res) => {
     try {
+        const { search } = req.query;
+        let query = {};
+
+        if (search) {
+            const searchRegex = new RegExp(search, 'i');
+            // Check if search term is an ObjectId for direct ID search
+            if (search.match(/^[0-9a-fA-F]{24}$/)) {
+                query = { _id: search };
+            } else {
+                query = {
+                    $or: [
+                        { description: searchRegex },
+                        { type: searchRegex },
+                        { status: searchRegex }
+                    ]
+                };
+            }
+        }
+
         // Find all reports, populate user details
-        const reports = await Report.find()
+        // Note: Filtering by populated user fields in top-level Mongo query is complex.
+        // For now, we search report fields. To search user names, we'd need aggregation.
+        const reports = await Report.find(query)
             .populate('userId', 'name email')
             .sort({ timestamp: -1 });
 
@@ -110,9 +132,11 @@ router.put('/:id/resolve', verifyToken, async (req, res) => {
         // Notify the user who submitted the report
         await Notification.create({
             userId: report.userId,
-            message: `Your report (ID: ${report._id.toString().substring(0, 8)}) status has been updated to: ${status}`,
+            title: 'Report Status Update',
+            message: resolutionNote || `Your report (ID: ${report._id.toString().substring(0, 8)}) status has been updated to: ${status}`,
             type: status === 'resolved' ? 'success' : 'info',
-            targetId: report._id
+            targetId: report._id,
+            isRead: false
         });
 
         res.json(report);

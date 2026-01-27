@@ -116,7 +116,12 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/contact', contactRoutes);
 
 // Voice Routes
+// Voice Routes
 app.use('/api/voice', voiceRoutes);
+
+// Audit Logs
+import auditLogRoutes from './routes/auditLogRoutes.js';
+app.use('/api/audit-logs', auditLogRoutes);
 
 
 // Global Error Handler

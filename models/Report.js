@@ -29,6 +29,13 @@ const reportSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     }
+}, { timestamps: true });
+
+// Add index for search fields
+reportSchema.index({
+    description: 'text',
+    type: 'text',
+    status: 'text'
 });
 
 export default mongoose.model("Report", reportSchema);

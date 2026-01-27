@@ -1,0 +1,217 @@
+
+[2026-01-27T05:37:37.310Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User not found: bp7249951@gmail.com
+
+[2026-01-27T05:37:42.532Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password mismatch for: bhoomzpatel6@gmail.com
+
+[2026-01-27T05:37:52.659Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password mismatch for: bhoomzpatel6@gmail.com
+
+[2026-01-27T05:38:00.862Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User not found: bp7249951@gmail.com
+
+[2026-01-27T05:38:07.407Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User not found: bp7249951@gmail.com
+
+[2026-01-27T05:38:10.002Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User not found: bp7249951@gmail.com
+
+[2026-01-27T05:38:10.612Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User not found: bp7249951@gmail.com
+
+[2026-01-27T05:38:10.928Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User not found: bp7249951@gmail.com
+
+[2026-01-27T05:38:11.184Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User not found: bp7249951@gmail.com
+
+[2026-01-27T05:41:22.457Z] Login Attempt for: patel.bhoomika654@gmail.com
+[LOGIN DEBUG] User found: patel.bhoomika654@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password mismatch for: patel.bhoomika654@gmail.com
+
+[2026-01-27T05:41:43.008Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T05:54:34.602Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T06:05:33.028Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T06:05:47.027Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T09:49:14.532Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T09:49:19.544Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T09:49:37.631Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T09:49:46.817Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T09:49:58.907Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T09:50:08.950Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T09:50:18.340Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T09:51:37.504Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T09:52:10.071Z] Login Attempt for: bhoomzpatel6@gmail.com
+[LOGIN DEBUG] User found: bhoomzpatel6@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:08:26.605Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:08:32.197Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:09:08.020Z] Login Attempt for: admin@uwo24.com
+[LOGIN DEBUG] User found: admin@uwo24.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:10:40.966Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:10:46.946Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:13:56.080Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:14:04.242Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:14:26.919Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:15:39.130Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:15:47.588Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:16:09.438Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:17:30.331Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:20:09.243Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password mismatch for: bp7249951@gmail.com
+
+[2026-01-27T10:20:19.825Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:26:38.997Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password mismatch for: bp7249951@gmail.com
+
+[2026-01-27T10:26:51.344Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:27:11.574Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T10:32:27.135Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:00:29.919Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:06:24.972Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:08:14.436Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:18:43.883Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:19:14.203Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:26:49.378Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:27:13.520Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:31:28.339Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:32:09.263Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:35:50.863Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:36:04.354Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:37:08.399Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:39:10.169Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:39:21.314Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
+
+[2026-01-27T11:41:30.344Z] Login Attempt for: bp7249951@gmail.com
+[LOGIN DEBUG] User found: bp7249951@gmail.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.

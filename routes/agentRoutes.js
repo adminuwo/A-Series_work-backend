@@ -29,9 +29,9 @@ route.get("/test-user/:userId", async (req, res) => {
 //create agents
 route.post('/', verifyToken, async (req, res) => {
   try {
-    const { agentName, description, category, avatar, url, pricing } = req.body;
+    const { agentName, description, category, avatar, url, pricing, pricingModel } = req.body;
 
-    console.log('[AGENT CREATE] Request data:', { agentName, category, avatar, url, pricing });
+    console.log('[AGENT CREATE] Request data:', { agentName, category, avatar, url, pricingModel });
 
     // Generate slug manually (pre-save hook won't run before validation)
     const slug = agentName
@@ -48,7 +48,8 @@ route.post('/', verifyToken, async (req, res) => {
       avatar,
       url,
       slug,  // Provide the slug to pass validation
-      pricing: { type: pricing },
+      pricing: pricing || { type: 'Free', plans: [] },
+      pricingModel: pricingModel || 'Free',
       status: 'Live',
       reviewStatus: 'Approved',
       owner: req.user.id
