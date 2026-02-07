@@ -133,3 +133,7 @@
 [2026-02-04T12:18:04.446Z] Login Attempt for: admin@uwo24.com
 [LOGIN DEBUG] User found: admin@uwo24.com, comparing passwords...
 [LOGIN DEBUG] Password matching! Success.
+
+[2026-02-07T06:43:19.314Z] Login Attempt for: admin@uwo24.com
+[LOGIN DEBUG] User found: admin@uwo24.com, comparing passwords...
+[LOGIN DEBUG] Password matching! Success.
