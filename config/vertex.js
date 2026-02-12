@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // FORCE VERTEX AI ONLY
 const projectId = process.env.GCP_PROJECT_ID;
-const location = 'asia-south1'; // Requested region
+const location = 'us-central1'; // Most stable region for Gemini
 const keyFilePath = path.join(__dirname, '../google_cloud_credentials.json');
 
 let vertexAI;
@@ -20,17 +20,20 @@ if (!projectId) {
 console.log(`✅ Vertex AI initializing with project: ${projectId}`);
 console.log(`📍 Location: ${location}`);
 
+// Model name - Stable version
+export const modelName = "gemini-2.0-flash-001";
+
 try {
   // Try with ADC (Application Default Credentials) first
   vertexAI = new VertexAI({ project: projectId, location: location });
-  console.log(`✅ Vertex AI initialized successfully with ADC`);
+  console.log(`✅ Vertex AI initialized successfully`);
+  console.log(`🤖 Model: ${modelName}`);
+  console.log(`📍 Region: ${location}`);
+  console.log(`🆔 Project: ${projectId}`);
 } catch (e) {
   console.error('❌ Vertex AI initialization failed:', e.message);
   throw new Error(`Failed to initialize Vertex AI: ${e.message}`);
 }
-
-// Model name - Requested version
-export const modelName = "gemini-2.5-flash"; // Ensuring strict adherence to user request
 
 const systemInstructionText = `You are AISA™, the internal intelligent assistant developed and trained under
 Unified Web Options & Services (UWO) for the AI Mall™ ecosystem.

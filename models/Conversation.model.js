@@ -10,6 +10,12 @@ const ConversationSchema = new mongoose.Schema({
         type: String,
         default: 'New Conversation'
     },
+    sessionId: {
+        type: String,
+        index: true,
+        unique: true,
+        sparse: true
+    },
     messages: [{
         role: {
             type: String,

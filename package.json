@@ -15,7 +15,6 @@
   "dependencies": {
     "@google-cloud/text-to-speech": "^6.4.0",
     "@google-cloud/vertexai": "^1.10.0",
-    "pdf-lib": "^1.17.1",
     "@google/generative-ai": "^0.24.1",
     "@langchain/community": "^1.1.1",
     "@langchain/core": "^1.1.8",
@@ -44,7 +43,9 @@
     "multer-storage-cloudinary": "^2.2.1",
     "nodemailer": "^7.0.12",
     "officeparser": "^4.2.0",
+    "pdf-lib": "^1.17.1",
     "pdf-parse": "^1.1.1",
+    "pptxgenjs": "^4.0.1",
     "razorpay": "^2.9.6",
     "resend": "^6.6.0",
     "tesseract.js": "^7.0.0",

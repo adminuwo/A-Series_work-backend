@@ -16,7 +16,16 @@ const messageSchema = new mongoose.Schema({
     name: String
   }],
   imageUrl: String,
-  videoUrl: String
+  videoUrl: String,
+  isProcessing: { type: Boolean, default: false },
+  conversion: {
+    file: String,
+    fileName: String,
+    mimeType: String,
+    fileSize: String,
+    blobUrl: String, // This will be local only, usually not saved, but we can keep it in schema if needed (won't persist across sessions effectively)
+    charCount: Number
+  }
 });
 
 const chatSessionSchema = new mongoose.Schema({

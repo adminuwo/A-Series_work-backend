@@ -27,6 +27,8 @@ import feedbackRoutes from './routes/feedbackRoutes.js';
 import voiceRoutes from './routes/voiceRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
+import imageRoute from './routes/image.routes.js';
+import videoRoutes from './routes/videoRoutes.js';
 
 
 dotenv.config();
@@ -79,6 +81,10 @@ app.use('/api/user', userRoute)
 // Chat Routes: /api/chat (GET sessions), /api/chat/:id (GET history), /api/chat/:id/message (POST message)
 app.use('/api/chat', chatRoutes);
 
+// Image & Video Gen Routes
+app.use('/api/image', imageRoute);
+app.use('/api/video', videoRoutes);
+
 
 // Auth Routes: /api/auth/login, /api/auth/signup
 app.use('/api/auth', authRoutes);
@@ -128,8 +134,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-app.listen(PORT, () => {
-  console.log(`AI-Mall Backend running on  http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`AI-Mall Backend running on  http://0.0.0.0:${PORT}`);
   console.log("Razorpay Config Check:", {
     KeyID: process.env.RAZORPAY_KEY_ID ? `${process.env.RAZORPAY_KEY_ID.substring(0, 8)}...` : "MISSING",
     Secret: process.env.RAZORPAY_KEY_SECRET ? "PRESENT" : "MISSING"

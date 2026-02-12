@@ -10,7 +10,10 @@ const MODES = {
   CONTENT_WRITING: 'CONTENT_WRITING',
   CODING_HELP: 'CODING_HELP',
   TASK_ASSISTANT: 'TASK_ASSISTANT',
-  DEEP_SEARCH: 'DEEP_SEARCH'
+  DEEP_SEARCH: 'DEEP_SEARCH',
+  IMAGE_GEN: 'IMAGE_GEN',
+  VIDEO_GEN: 'VIDEO_GEN',
+  AUDIO_GEN: 'AUDIO_GEN'
 };
 
 const CODING_KEYWORDS = [
@@ -43,7 +46,9 @@ const CONVERSION_KEYWORDS = [
   'pdf to docx', 'convert karo', 'badlo', 'format change', 'file convert',
   'is file ko', 'convert this', 'make this a', 'change this to',
   'into pdf', 'to pdf', 'into word', 'to word', 'into doc', 'to doc',
-  'me convert', 'pdf me', 'word me', 'doc me'
+  'me convert', 'pdf me', 'word me', 'doc me',
+  'pptx to pdf', 'ppt to pdf', 'excel to pdf', 'xlsx to pdf', 'image to pdf',
+  'jpg to pdf', 'png to pdf', 'webp to pdf', 'txt to pdf'
 ];
 
 /**
@@ -58,7 +63,27 @@ export function detectMode(message = '', attachments = []) {
 
   console.log(`[MODE DETECTION] Processing message: "${lowerMessage}" with ${attachments ? attachments.length : 0} attachments`);
 
-  // Priority 1: File Analysis/Conversion - if attachments are present
+  // Priority 1: Image/Video Generation Intent
+  if (
+    (lowerMessage.includes('image') || lowerMessage.includes('photo') || lowerMessage.includes('pic') || lowerMessage.includes('draw')) &&
+    (lowerMessage.includes('generate') || lowerMessage.includes('create') || lowerMessage.includes('make') || lowerMessage.includes('show'))
+  ) {
+    return MODES.IMAGE_GEN;
+  }
+
+  if (lowerMessage.includes('video') && (lowerMessage.includes('generate') || lowerMessage.includes('create') || lowerMessage.includes('make'))) {
+    return MODES.VIDEO_GEN;
+  }
+
+  // Audio Generation Intent
+  if (
+    (lowerMessage.includes('audio') || lowerMessage.includes('sound') || lowerMessage.includes('music') || lowerMessage.includes('voice') || lowerMessage.includes('song')) &&
+    (lowerMessage.includes('generate') || lowerMessage.includes('create') || lowerMessage.includes('make') || lowerMessage.includes('compose'))
+  ) {
+    return MODES.AUDIO_GEN;
+  }
+
+  // Priority 2: File Analysis/Conversion - if attachments are present
   if (hasAttachments) {
     // Check if it's a conversion request with attachments
     const matchedKeyword = CONVERSION_KEYWORDS.find(keyword => lowerMessage.includes(keyword));
@@ -184,12 +209,16 @@ You generally receive a file and a user command like "convert to pdf".
 CRITICAL INSTRUCTIONS:
 1. IGNORE TYPOS: Treat "ot" as "to", "duc" as "doc", "pfd" as "pdf", etc.
 2. DETECT FORMATS:
-   - Identify source format from the attached file name or extension.
+   - Identify source format from the attached file name or extension (PDF, DOCX, PPTX, XLSX, JPG, PNG, WEBP, TXT).
    - Identify target format from user's text.
 3. DEFAULTS:
    - If User says "convert this" (no target specified):
      - If source is PDF -> Target is DOCX
      - If source is DOCX -> Target is PDF
+     - If source is PPTX/XLSX/Image -> Target is PDF
+   - Bidirectional Rules:
+     - User "make excel" (Attached: file.pdf) -> source: pdf, target: xlsx
+     - User "make ppt" (Attached: file.pdf) -> source: pdf, target: pptx
 
 OUTPUT FORMAT (STRICT JSON ONLY):
 Do NOT speak. Do NOT add markdown text outside the JSON. Do NOT start with "Here is the JSON".
@@ -197,17 +226,23 @@ Output ONLY this JSON structure:
 
 {
   "action": "file_conversion",
-  "source_format": "pdf",   // or "docx"
-  "target_format": "docx",  // or "pdf"
-  "file_name": "original_filename.pdf"
+  "source_format": "pptx",   // e.g., "pdf", "pptx", "xlsx", "jpg"
+  "target_format": "pdf",    // e.g., "docx", "pdf"
+  "file_name": "original_filename.pptx"
 }
 
 EXAMPLES:
 User: "convert ot doc" (Attached: file.pdf)
 Output: {"action": "file_conversion", "source_format": "pdf", "target_format": "docx", "file_name": "file.pdf"}
 
-User: "make pdf" (Attached: letter.docx)
-Output: {"action": "file_conversion", "source_format": "docx", "target_format": "pdf", "file_name": "letter.docx"}
+User: "make excel" (Attached: report.pdf)
+Output: {"action": "file_conversion", "source_format": "pdf", "target_format": "xlsx", "file_name": "report.pdf"}
+
+User: "make pdf" (Attached: presentation.pptx)
+Output: {"action": "file_conversion", "source_format": "pptx", "target_format": "pdf", "file_name": "presentation.pptx"}
+
+User: "convert image to pdf" (Attached: photo.jpg)
+Output: {"action": "file_conversion", "source_format": "jpg", "target_format": "pdf", "file_name": "photo.jpg"}
 
 END OF INSTRUCTION. OUTPUT ONLY JSON.`;
 
@@ -312,6 +347,60 @@ TASK BREAKDOWN STRUCTURE:
 4. Success Criteria: [How to measure completion]
 ${languageRule}`;
 
+    case MODES.IMAGE_GEN:
+      return `${baseIdentity}
+
+MODE: IMAGE_GEN
+
+You are a creative AI specializing in image generation prompts.
+
+BEHAVIOR RULE:
+${context.isExplicit
+          ? '1. MANDATORY: Output ONLY the JSON object. Do not speak.'
+          : '1. Describe the image you are about to create in 1-2 friendly sentences to explain it to the user.\n2. THEN, immediately follow with the mandatory JSON object below.'}
+
+MANDATORY JSON FORMAT:
+{"action": "generate_image", "prompt": "highly detailed, artistic description for DALL-E/Imagen"}
+
+If you are not generating an image but just discussing images, keep it brief.
+${languageRule}`;
+
+    case MODES.VIDEO_GEN:
+      return `${baseIdentity}
+
+MODE: VIDEO_GEN
+
+You are a creative AI specializing in video generation prompts.
+
+BEHAVIOR RULE:
+${context.isExplicit
+          ? '1. MANDATORY: Output ONLY the JSON object. Do not speak.'
+          : '1. Describe the video you are about to create in 1-2 friendly sentences to explain it to the user.\n2. THEN, immediately follow with the mandatory JSON object below.'}
+
+MANDATORY JSON FORMAT:
+{"action": "generate_video", "prompt": "highly detailed, cinematic description for video generation"}
+
+If you are not generating a video but just discussing videos, keep it brief.
+${languageRule}`;
+
+    case MODES.AUDIO_GEN:
+      return `${baseIdentity}
+
+MODE: AUDIO_GEN
+
+You are a creative AI specializing in audio and music generation prompts.
+
+BEHAVIOR RULE:
+${context.isExplicit
+          ? '1. MANDATORY: Output ONLY the JSON object. Do not speak.'
+          : '1. Describe the audio you are about to create in 1-2 friendly sentences to explain it to the user.\n2. THEN, immediately follow with the mandatory JSON object below.'}
+
+MANDATORY JSON FORMAT:
+{"action": "generate_audio", "prompt": "highly detailed description for audio/music generation", "duration": 30}
+
+If you are not generating audio but just discussing music, keep it brief.
+${languageRule}`;
+
     case MODES.NORMAL_CHAT:
     default:
       return `${baseIdentity}
@@ -322,7 +411,7 @@ You are a friendly, intelligent conversational assistant.
 
 RESPONSE BEHAVIOR:
 - Answer directly without greeting messages
-- Do NOT say "Hello... welcome" or similar greetings
+- Do NOT say "Hello... welcome to AISA" or similar greetings
 - Focus on providing the answer immediately
 
 YOUR ROLE:
@@ -355,7 +444,10 @@ export function getModeName(mode) {
     [MODES.CONTENT_WRITING]: 'Content Writing',
     [MODES.CODING_HELP]: 'Coding Help',
     [MODES.TASK_ASSISTANT]: 'Task Assistant',
-    [MODES.DEEP_SEARCH]: 'Deep Search'
+    [MODES.DEEP_SEARCH]: 'Deep Search',
+    [MODES.IMAGE_GEN]: 'Image Gen',
+    [MODES.VIDEO_GEN]: 'Video Gen',
+    [MODES.AUDIO_GEN]: 'Audio Gen'
   };
   return names[mode] || 'Chat';
 }

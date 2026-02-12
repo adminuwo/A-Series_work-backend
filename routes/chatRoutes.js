@@ -24,25 +24,6 @@ const router = express.Router();
 
 // Helper to check guest limits
 const checkGuestLimits = async (req, sessionId) => {
-  if (req.user) return { allowed: true };
-  if (!req.guest) return { allowed: true }; // Should not happen with middleware
-
-  const MAX_SESSIONS = 10;
-  const MAX_MESSAGES = 5;
-
-  // 1. Check Sessions Count
-  if (req.guest.sessionIds.length >= MAX_SESSIONS && !req.guest.sessionIds.includes(sessionId)) {
-    return { allowed: false, reason: "MAX_SESSIONS_REACHED" };
-  }
-
-  // 2. Check Messages Count in current session if sessionId is provided
-  if (sessionId) {
-    const session = await ChatSession.findOne({ sessionId });
-    if (session && session.messages && session.messages.length >= MAX_MESSAGES) {
-      return { allowed: false, reason: "MAX_MESSAGES_REACHED" };
-    }
-  }
-
   return { allowed: true };
 };
 
@@ -132,8 +113,13 @@ router.post("/", optionalVerifyToken, identifyGuest, async (req, res) => {
 
     let detectedMode = mode || detectMode(content, allAttachments);
     if (detectedMode === 'DOCUMENT_CONVERT') detectedMode = 'FILE_CONVERSION';
+
+    // Check if mode was explicitly provided by the user (tool selected)
+    const isExplicit = !!mode;
+
     const modeSystemInstruction = getModeSystemInstruction(detectedMode, language || 'English', {
-      fileCount: allAttachments.length
+      fileCount: allAttachments.length,
+      isExplicit // Pass flag to control explanation vs strict JSON
     });
 
     console.log(`[MODE DETECTION] Detected mode: ${detectedMode} for message: "${content?.substring(0, 50)}..."`);
@@ -353,7 +339,7 @@ Do not output any other text or explanation if you are triggering these actions.
         const tempContentPayload = { role: "user", parts: parts };
         const modelForParams = genAIInstance.getGenerativeModel({
           model: primaryModelName,
-          systemInstruction: finalSystemInstruction
+          systemInstruction: `You are a file conversion assistant. Analyze the user request to determine the target format. Supported conversions: Input (PDF, DOCX, DOC, PPTX, PPT, XLSX, XLS, JPG, PNG) -> Output (PDF, DOCX, PPTX, XLSX). If the user asks for 'document', prefer DOCX. If 'presentation', prefer PPTX. If 'spreadsheet', prefer XLSX. Return ONLY JSON: { "action": "file_conversion", "source_format": "...", "target_format": "...", "file_name": "..." }`
         });
 
         const tempStreamingResult = await modelForParams.generateContent({
@@ -428,8 +414,11 @@ Do not output any other text or explanation if you are triggering these actions.
         let source = ext;
 
         if (ext === 'pdf') target = 'docx';
-        else if (['doc', 'docx'].includes(ext)) target = 'pdf';
-        else if (['jpg', 'jpeg', 'png', 'webp', 'xls', 'xlsx'].includes(ext)) target = 'pdf';
+        else if (['doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx'].includes(ext)) target = 'pdf';
+        else if (['jpg', 'jpeg', 'png', 'webp'].includes(ext)) target = 'pdf';
+
+        // Basic fallback doesn't guess "pdf to ppt" automatically unless explicitly asked
+        // but this ensures "file.pptx" always goes to PDF by default if user says nothing.
 
         conversionParams = {
           action: "file_conversion",
@@ -468,17 +457,25 @@ Do not output any other text or explanation if you are triggering these actions.
 
           // Determine output filename
           const originalName = conversionParams.file_name || 'document';
-          const baseName = originalName.replace(/\.(pdf|docx?|doc)$/i, '');
-          const outputExtension = conversionParams.target_format === 'pdf' ? 'pdf' : 'docx';
+          const baseName = originalName.replace(/\.(pdf|docx?|doc|pptx?|xlsx?)$/i, '');
+          const outputExtension =
+            conversionParams.target_format === 'pdf' ? 'pdf' :
+              conversionParams.target_format === 'xlsx' ? 'xlsx' :
+                conversionParams.target_format === 'pptx' ? 'pptx' : 'docx';
+
           const outputFileName = `${baseName}_converted.${outputExtension}`;
+
+          let mimeType = 'application/octet-stream';
+          if (outputExtension === 'pdf') mimeType = 'application/pdf';
+          else if (outputExtension === 'docx') mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+          else if (outputExtension === 'xlsx') mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+          else if (outputExtension === 'pptx') mimeType = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
           conversionResult = {
             success: true,
             file: convertedBase64,
             fileName: outputFileName,
-            mimeType: conversionParams.target_format === 'pdf'
-              ? 'application/pdf'
-              : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            mimeType: mimeType,
             message: (jsonMatch && jsonMatch[1])
               ? aiResponse.replace(jsonMatch[1], '').replace(/```json|```/g, '').trim()
               : "Here is your converted document."
@@ -521,8 +518,8 @@ Do not output any other text or explanation if you are triggering these actions.
             systemInstruction: finalSystemInstruction
           });
 
-          // Add timeout to prevent hanging
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 20000));
+          // Add timeout to prevent hanging (increased to 45s for better reliability)
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 45000));
           const resultPromise = model.generateContent({ contents: [contentPayload] });
 
           const result = await Promise.race([resultPromise, timeoutPromise]);
@@ -537,6 +534,7 @@ Do not output any other text or explanation if you are triggering these actions.
           throw new Error("Empty response");
         } catch (mErr) {
           console.error(`[GEMINI] Model ${mName} failed:`, mErr.message);
+          console.error(`[GEMINI ERROR OBJECT]:`, JSON.stringify(mErr, null, 2));
           throw mErr;
         }
       };
@@ -777,6 +775,17 @@ Stack: ${err.stack}
       details: err.details || err.response?.data
     });
     const statusCode = err.status || 500;
+
+    // Feature Request: Explain the prompt instead of raw error for Image/Video intent
+    if (detectedMode === 'IMAGE_GEN' || detectedMode === 'VIDEO_GEN') {
+      const type = detectedMode === 'IMAGE_GEN' ? 'image' : 'video';
+      return res.status(200).json({
+        success: true,
+        reply: `I understand you want to generate a ${type}. I'm currently having a brief technical difficulty with my direct chat model, but you can use the **${type === 'image' ? 'Generate Image' : 'Generate Video'}** tool from the **Magic Tools (plus icon)** menu for a much faster and more reliable experience!`,
+        detectedMode
+      });
+    }
+
     return res.status(statusCode).json({ error: "AI failed to respond", details: err.message });
   }
 });
@@ -877,6 +886,16 @@ router.get('/:sessionId', optionalVerifyToken, identifyGuest, async (req, res) =
     }
 
     console.log(`[CHAT] Found session ${sessionId} with ${session.messages?.length || 0} messages.`);
+
+    // Log conversion data for debugging
+    const messagesWithConversion = session.messages?.filter(m => m.conversion?.file) || [];
+    if (messagesWithConversion.length > 0) {
+      console.log(`[CHAT] Session has ${messagesWithConversion.length} messages with conversion data`);
+      messagesWithConversion.forEach(msg => {
+        console.log(`  - Message ${msg.id}: ${msg.conversion.fileName} (${msg.conversion.fileSize})`);
+      });
+    }
+
     res.json(session);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch chat history' });
@@ -999,8 +1018,11 @@ router.post('/:sessionId/message', optionalVerifyToken, identifyGuest, async (re
 
     res.json(session);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to save message' });
+    console.error('[POST MESSAGE ERROR]:', err.message);
+    console.error('[POST MESSAGE ERROR] Stack:', err.stack);
+    console.error('[POST MESSAGE ERROR] SessionId:', req.params.sessionId);
+    console.error('[POST MESSAGE ERROR] Message role:', req.body.message?.role);
+    res.status(500).json({ error: 'Failed to save message', details: err.message });
   }
 });
 
@@ -1047,9 +1069,80 @@ router.delete('/:sessionId/message/:messageId', verifyToken, async (req, res) =>
       details: err.message
     });
   }
+
 });
 
-// (The POST /:sessionId/message route is defined above around line 702)
+// Update a specific message in a session (e.g. after async processing)
+router.patch('/:sessionId/message/:messageId', optionalVerifyToken, identifyGuest, async (req, res) => {
+  try {
+    const { sessionId, messageId } = req.params;
+    const { content, isProcessing, conversion } = req.body;
+    const userId = req.user?.id;
+    const guest = req.guest;
+
+    // Check session existence
+    const session = await ChatSession.findOne({ sessionId });
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+
+    // Verify ownership
+    if (session.userId) {
+      if (!userId || session.userId.toString() !== userId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+    } else if (session.guestId) {
+      const currentGuestId = req.cookies.guest_id;
+      if (guest && guest.guestId === session.guestId) {
+        // OK
+      } else if (currentGuestId === session.guestId) {
+        // OK
+      } else {
+        return res.status(403).json({ error: "Access denied" });
+      }
+    }
+
+    // Prepare update
+    const updateFields = {};
+    if (content !== undefined) updateFields['messages.$.content'] = content;
+    if (isProcessing !== undefined) updateFields['messages.$.isProcessing'] = isProcessing;
+    if (conversion !== undefined) {
+      updateFields['messages.$.conversion'] = conversion;
+      console.log(`[UPDATE MSG] Saving conversion data for message ${messageId}:`, {
+        fileName: conversion.fileName,
+        mimeType: conversion.mimeType,
+        fileSize: conversion.fileSize,
+        hasFile: !!conversion.file,
+        fileLength: conversion.file?.length || 0
+      });
+    }
+
+    if (Object.keys(updateFields).length === 0) return res.json(session);
+
+    console.log(`[UPDATE MSG] Updating message ${messageId} in session ${sessionId} with fields:`, Object.keys(updateFields));
+
+    const updatedSession = await ChatSession.findOneAndUpdate(
+      { sessionId, "messages.id": messageId },
+      { $set: updateFields },
+      { new: true }
+    );
+
+    if (!updatedSession) {
+      console.error(`[UPDATE MSG ERROR] Message ${messageId} not found in session ${sessionId}`);
+      return res.status(404).json({ error: "Message or Session not found for update" });
+    }
+
+    // Verify the update was successful
+    const updatedMsg = updatedSession.messages.find(m => m.id === messageId);
+    if (updatedMsg && conversion) {
+      console.log(`[UPDATE MSG SUCCESS] Conversion saved. Has file:`, !!updatedMsg.conversion?.file);
+    }
+
+    res.json(updatedSession);
+
+  } catch (err) {
+    console.error(`[UPDATE MSG ERROR] ${err.message}`);
+    res.status(500).json({ error: 'Failed to update message' });
+  }
+});
 
 // Update chat session title
 router.patch('/:sessionId/title', verifyToken, async (req, res) => {

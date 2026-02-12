@@ -5,8 +5,7 @@ import generateTokenAndSetCookies from "../utils/generateTokenAndSetCookies.js";
 import { generateOTP } from "../utils/verifiacitonCode.js";
 import { sendVerificationEmail, sendResetPasswordEmail, sendPasswordChangeSuccessEmail, sendResetPasswordOTPEmail } from "../utils/Email.js";
 import crypto from "crypto";
-import fs from "fs";
-import path from "path";
+
 
 const router = express.Router();
 
@@ -71,23 +70,21 @@ router.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
     // Find user
-    const logFile = path.join(process.cwd(), "login_debug.log");
-    fs.appendFileSync(logFile, `\n[${new Date().toISOString()}] Login Attempt for: ${email}\n`);
-
+    console.log(`[LOGIN DEBUG] Attempt for email: ${email}`);
     const user = await UserModel.findOne({ email });
     if (!user) {
-      fs.appendFileSync(logFile, `[LOGIN DEBUG] User not found: ${email}\n`);
+      console.log(`[LOGIN DEBUG] User not found: ${email}`);
       return res.status(401).json({ error: "Invalid email or password" });
     }
 
     // Compare hashed password
-    fs.appendFileSync(logFile, `[LOGIN DEBUG] User found: ${user.email}, comparing passwords...\n`);
+    console.log(`[LOGIN DEBUG] User found. ID: ${user._id}. Checking password...`);
     const isCorrect = await bcrypt.compare(password, user.password);
     if (!isCorrect) {
-      fs.appendFileSync(logFile, `[LOGIN DEBUG] Password mismatch for: ${email}\n`);
+      console.log(`[LOGIN DEBUG] Password match failed for: ${email}`);
       return res.status(401).json({ error: "Invalid email or password" });
     }
-    fs.appendFileSync(logFile, `[LOGIN DEBUG] Password matching! Success.\n`);
+    console.log(`[LOGIN DEBUG] Password matched. Generating token...`);
 
     // Generate token
     const token = generateTokenAndSetCookies(res, user._id, user.email, user.name);

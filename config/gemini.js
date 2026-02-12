@@ -13,9 +13,7 @@ export const genAI = new GoogleGenerativeAI(apiKey);
 
 // Config for the standard text model
 // Using gemini-1.5-flash which is widely available and performant
-// Using gemini-1.5-flash-001 which is widely available and performant
-// Using gemini-2.5-flash-lite which is available in 2026
-const textModelName = 'gemini-2.5-flash-lite';
+const textModelName = 'gemini-2.5-flash';
 
 // Create a default instance similar to what was exported as 'generativeModel' in vertex config
 export const generativeModel = genAI.getGenerativeModel({
@@ -91,7 +89,7 @@ Support UWO™ and AI Mall™ users by delivering reliable, practical, and brand
 
 // For visual models if needed
 export const generativeVisionModel = genAI.getGenerativeModel({
-    model: 'gemini-2.5-flash-image',
+    model: 'gemini-2.5-flash',
 });
 
 // Preview alias

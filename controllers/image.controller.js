@@ -38,7 +38,7 @@ export const generateImageFromPrompt = async (prompt) => {
 
         // IMPORTANT: Imagen 3.0 is ONLY available in us-central1, NOT in asia-south1
         // Even though chat uses asia-south1, images MUST use us-central1
-        const location = 'asia-south1';
+        const location = 'us-central1';
         // Use Imagen 3.0 Generate 002 (Latest stable)
         const modelId = 'imagen-3.0-generate-002';
         const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${location}/publishers/google/models/${modelId}:predict`;
