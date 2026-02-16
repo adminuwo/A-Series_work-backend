@@ -2,7 +2,7 @@ import express from 'express';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
-import Transaction from '../models/Transaction.js';
+import Subscription from '../models/Subscription.js';
 import User from '../models/User.js';
 import Agent from '../models/Agents.js';
 import { verifyToken } from '../middleware/authorization.js';
@@ -120,22 +120,25 @@ router.post('/verify', verifyToken, async (req, res) => {
             // Handle missing owner (default to buyer or a system ID if owner is not set)
             const vendorId = agent.owner || req.user.id;
 
-            const transactionData = {
-                transactionId: razorpay_payment_id,
-                buyerId: req.user.id,
-                vendorId: vendorId,
+            const subscriptionData = {
+                userId: req.user.id,
                 agentId: agentId,
-                amount: Number(amount),
-                platformFee: Number(amount) * 0.5, // 50% commission
-                netAmount: Number(amount) * 0.5,
-                status: 'Success',
+                planType: plan || agent.pricingModel || 'AgentPro',
+                status: 'active',
+                paymentDetails: {
+                    orderId: razorpay_order_id,
+                    paymentId: razorpay_payment_id,
+                    signature: razorpay_signature,
+                    amount: Number(amount),
+                    currency: 'INR'
+                }
             };
 
-            console.log('[PAYMENT VERIFY] Creating transaction with data:', transactionData);
+            console.log('[PAYMENT VERIFY] Creating subscription with data:', subscriptionData);
 
-            const transaction = new Transaction(transactionData);
-            await transaction.save();
-            console.log('[PAYMENT VERIFY] Transaction saved:', transaction._id);
+            const subscription = new Subscription(subscriptionData);
+            await subscription.save();
+            console.log('[PAYMENT VERIFY] Subscription saved:', subscription._id);
 
             // 3. Add Agent to User
             console.log('[PAYMENT VERIFY] Adding agent to user update start...');

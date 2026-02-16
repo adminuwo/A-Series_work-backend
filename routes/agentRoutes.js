@@ -1,8 +1,8 @@
 import express from 'express'
 import agentModel from '../models/Agents.js'
 import userModel from "../models/User.js"
-import notificationModel from "../models/Notification.js"
-import transactionModel from "../models/Transaction.js"
+// import notificationModel from "../models/Notification.js"
+import subscriptionModel from "../models/Subscription.js"
 import { verifyToken } from '../middleware/authorization.js'
 const route = express.Router()
 
@@ -148,14 +148,15 @@ route.post('/buy/:id', async (req, res) => {
       const platformFee = amount * 0.5; // 50% Platform Fee
       const netAmount = amount - platformFee;
 
-      await transactionModel.create({
+      await subscriptionModel.create({
+        userId: userId,
         agentId: agent._id,
-        vendorId: agent.owner,
-        buyerId: userId,
-        amount,
-        platformFee,
-        netAmount,
-        status: 'Success'
+        planType: agent.pricingModel || 'AgentFree',
+        status: 'active',
+        paymentDetails: {
+          amount: amount,
+          currency: 'INR'
+        }
       });
     }
 

@@ -1,6 +1,6 @@
 import * as aiService from '../services/ai.service.js';
 import logger from '../utils/logger.js';
-import Conversation from '../models/Conversation.model.js';
+import Conversation from '../models/Conversation.js';
 import { uploadToCloudinary } from '../services/cloudinary.service.js';
 import pdf from 'pdf-parse/lib/pdf-parse.js';
 import mammoth from 'mammoth';
@@ -14,7 +14,7 @@ import Tesseract from 'tesseract.js';
 // @access  Public (for now)
 export const chat = async (req, res, next) => {
     try {
-        const { message, conversationId, activeDocContent, systemInstruction, mode, image, document } = req.body;
+        const { message, conversationId, activeDocContent, systemInstruction, mode, image, document, agentType } = req.body;
 
         if (!message && (!image || image.length === 0) && (!document || document.length === 0)) {
             return res.status(400).json({ success: false, message: 'Message or attachment is required' });
@@ -24,6 +24,7 @@ export const chat = async (req, res, next) => {
         const responseText = await aiService.chat(message, activeDocContent, {
             systemInstruction,
             mode,
+            agentType,
             images: image,
             documents: document
         });

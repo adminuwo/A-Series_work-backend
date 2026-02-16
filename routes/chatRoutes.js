@@ -1,16 +1,16 @@
 import mongoose from "mongoose";
 import express from "express"
-import ChatSession from "../models/ChatSession.js"
+import Conversation from "../models/Conversation.js"
 import { generativeModel, genAIInstance, modelName as primaryModelName } from "../config/vertex.js";
 import userModel from "../models/User.js";
-import Guest from "../models/Guest.js";
+// import Guest from "../models/Guest.js";
 import { verifyToken, optionalVerifyToken } from "../middleware/authorization.js";
 import { identifyGuest } from "../middleware/guestMiddleware.js";
 import { uploadToCloudinary } from "../services/cloudinary.service.js";
 import mammoth from "mammoth";
 import { detectMode, getModeSystemInstruction } from "../utils/modeDetection.js";
 import { detectIntent, extractReminderDetails, detectLanguage, getVoiceSystemInstruction } from "../utils/voiceAssistant.js";
-import Reminder from "../models/Reminder.js";
+// import Reminder from "../models/Reminder.js";
 import { requiresWebSearch, extractSearchQuery, processSearchResults, getWebSearchSystemInstruction } from "../utils/webSearch.js";
 import { performWebSearch } from "../services/searchService.js";
 import { convertFile } from "../utils/fileConversion.js";
@@ -263,6 +263,7 @@ Do not output any other text or explanation if you are triggering these actions.
         // Save reminder to database
         if (req.user) {
           // Save reminder to database (Only for logged-in users)
+          /*
           const newReminder = new Reminder({
             userId: req.user.id,
             title: reminderData.title,
@@ -275,6 +276,8 @@ Do not output any other text or explanation if you are triggering these actions.
           });
           await newReminder.save();
           console.log('[VOICE ASSISTANT] Reminder saved to DB:', newReminder._id);
+          */
+          console.log('[VOICE ASSISTANT] Reminder logic placeholder (Model deleted)');
 
           // Generate voice-friendly confirmation
           const time = new Date(reminderData.datetime).toLocaleTimeString('en-IN', {
@@ -806,17 +809,22 @@ router.get('/', optionalVerifyToken, identifyGuest, async (req, res) => {
     }
 
     let sessions = [];
+    const { agentType } = req.query;
+
+    const query = {};
+    if (agentType) {
+      query.agentType = agentType;
+    }
 
     if (userId) {
-      const user = await userModel.findById(userId).populate({
-        path: 'chatSessions',
-        select: 'sessionId title lastModified userId',
-        options: { sort: { lastModified: -1 } }
-      });
-      sessions = (user?.chatSessions || []).filter(s => s !== null);
+      query.userId = userId;
+      sessions = await Conversation.find(query)
+        .select('sessionId title lastModified userId agentType')
+        .sort({ lastModified: -1 });
     } else if (guestId) {
-      sessions = await ChatSession.find({ guestId })
-        .select('sessionId title lastModified guestId')
+      query.guestId = guestId;
+      sessions = await Conversation.find(query)
+        .select('sessionId title lastModified guestId agentType')
         .sort({ lastModified: -1 });
     }
 
@@ -841,7 +849,7 @@ router.get('/:sessionId', optionalVerifyToken, identifyGuest, async (req, res) =
     }
 
     // Verify that the session belongs to this user or guest
-    let session = await ChatSession.findOne({ sessionId });
+    let session = await Conversation.findOne({ sessionId });
 
     if (!session) {
       console.warn(`[CHAT] Session ${sessionId} not found in DB.`);
@@ -860,9 +868,8 @@ router.get('/:sessionId', optionalVerifyToken, identifyGuest, async (req, res) =
 
         let canLink = (session.guestId === currentGuestId);
 
-        if (!canLink && fingerprint) {
-          const guestByFingerprint = await Guest.findOne({ fingerprint });
-          if (guestByFingerprint && guestByFingerprint.guestId === session.guestId) {
+        if (!canLink && fingerprint && req.guest) {
+          if (req.guest.fingerprint === fingerprint && req.guest.guestId === session.guestId) {
             canLink = true;
           }
         }
@@ -873,7 +880,7 @@ router.get('/:sessionId', optionalVerifyToken, identifyGuest, async (req, res) =
         if (canLink || !session.guestId) { // !session.guestId handles legacy/edge cases
           session.userId = userId;
           await session.save();
-          await userModel.findByIdAndUpdate(userId, { $addToSet: { chatSessions: session._id } });
+          await userModel.findByIdAndUpdate(userId, { $addToSet: { Conversations: session._id } });
           console.log(`[CHAT] Linked guest session ${sessionId} to user ${userId}`);
         }
       }
@@ -955,7 +962,7 @@ router.post('/:sessionId/message', optionalVerifyToken, identifyGuest, async (re
     }
 
     // Ownership check before saving
-    let existingSession = await ChatSession.findOne({ sessionId });
+    let existingSession = await Conversation.findOne({ sessionId });
     if (existingSession) {
       if (userId) {
         if (existingSession.userId && existingSession.userId.toString() !== userId) {
@@ -965,9 +972,8 @@ router.post('/:sessionId/message', optionalVerifyToken, identifyGuest, async (re
           const currentGuestId = req.cookies.guest_id;
           const fingerprint = req.headers['x-device-fingerprint'];
           let canLink = (existingSession.guestId === currentGuestId);
-          if (!canLink && fingerprint) {
-            const guestByFingerprint = await Guest.findOne({ fingerprint });
-            if (guestByFingerprint && guestByFingerprint.guestId === existingSession.guestId) {
+          if (!canLink && fingerprint && req.guest) {
+            if (req.guest.fingerprint === fingerprint && req.guest.guestId === existingSession.guestId) {
               canLink = true;
             }
           }
@@ -983,8 +989,9 @@ router.post('/:sessionId/message', optionalVerifyToken, identifyGuest, async (re
     const updateData = {
       $push: { messages: message },
       $set: {
-        lastModified: Date.now(),
-        ...(title && { title })
+        lastMessageAt: Date.now(),
+        ...(title && { title }),
+        agentType: message.agentName || message.agentType || 'AISA'
       }
     };
 
@@ -994,7 +1001,7 @@ router.post('/:sessionId/message', optionalVerifyToken, identifyGuest, async (re
       updateData.$set.guestId = guest.guestId;
     }
 
-    const session = await ChatSession.findOneAndUpdate(
+    const session = await Conversation.findOneAndUpdate(
       { sessionId },
       updateData,
       { new: true, upsert: true }
@@ -1010,7 +1017,7 @@ router.post('/:sessionId/message', optionalVerifyToken, identifyGuest, async (re
     if (userId && mongoose.Types.ObjectId.isValid(userId)) {
       await userModel.findByIdAndUpdate(
         userId,
-        { $addToSet: { chatSessions: session._id } },
+        { $addToSet: { Conversations: session._id } },
         { new: true }
       );
       console.log(`[CHAT] Associated session ${session._id} with user ${userId}.`);
@@ -1035,7 +1042,7 @@ router.delete('/:sessionId/message/:messageId', verifyToken, async (req, res) =>
 
     // Optional: Also delete the subsequent model response if it exists
     // (Logic moved from frontend to backend for consistency)
-    const session = await ChatSession.findOne({ sessionId });
+    const session = await Conversation.findOne({ sessionId });
     if (!session) return res.status(404).json({ error: 'Session not found' });
 
     const msgIndex = session.messages.findIndex(m => m.id === messageId);
@@ -1055,7 +1062,7 @@ router.delete('/:sessionId/message/:messageId', verifyToken, async (req, res) =>
     console.log(`[DELETE] Session: ${sessionId}, Removing IDs:`, validMsgsToDelete);
 
     if (validMsgsToDelete.length > 0) {
-      await ChatSession.findOneAndUpdate(
+      await Conversation.findOneAndUpdate(
         { sessionId },
         { $pull: { messages: { id: { $in: validMsgsToDelete } } } }
       );
@@ -1081,7 +1088,7 @@ router.patch('/:sessionId/message/:messageId', optionalVerifyToken, identifyGues
     const guest = req.guest;
 
     // Check session existence
-    const session = await ChatSession.findOne({ sessionId });
+    const session = await Conversation.findOne({ sessionId });
     if (!session) return res.status(404).json({ error: 'Session not found' });
 
     // Verify ownership
@@ -1119,7 +1126,7 @@ router.patch('/:sessionId/message/:messageId', optionalVerifyToken, identifyGues
 
     console.log(`[UPDATE MSG] Updating message ${messageId} in session ${sessionId} with fields:`, Object.keys(updateFields));
 
-    const updatedSession = await ChatSession.findOneAndUpdate(
+    const updatedSession = await Conversation.findOneAndUpdate(
       { sessionId, "messages.id": messageId },
       { $set: updateFields },
       { new: true }
@@ -1159,7 +1166,7 @@ router.patch('/:sessionId/title', verifyToken, async (req, res) => {
     }
 
     // Update session: search by sessionId AND (either matching userId or no userId yet)
-    const session = await ChatSession.findOneAndUpdate(
+    const session = await Conversation.findOneAndUpdate(
       {
         sessionId,
         $or: [{ userId: userId }, { userId: { $exists: false } }, { userId: null }]
@@ -1190,12 +1197,12 @@ router.delete('/:sessionId', verifyToken, async (req, res) => {
       return res.json({ message: 'History cleared (Mock)' });
     }
 
-    const session = await ChatSession.findOneAndDelete({
+    const session = await Conversation.findOneAndDelete({
       sessionId,
       $or: [{ userId: userId }, { userId: { $exists: false } }, { userId: null }]
     });
     if (session) {
-      await userModel.findByIdAndUpdate(userId, { $pull: { chatSessions: session._id } });
+      await userModel.findByIdAndUpdate(userId, { $pull: { Conversations: session._id } });
     }
     res.json({ message: 'History cleared' });
   } catch (err) {

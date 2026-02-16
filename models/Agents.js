@@ -122,7 +122,15 @@ const AgentSchema = new mongoose.Schema(
         owner: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User'
-        }
+        },
+        knowledgeDocs: [{
+            filename: String,
+            cloudinaryUrl: String,
+            cloudinaryId: String,
+            mimetype: String,
+            size: Number,
+            uploadDate: { type: Date, default: Date.now }
+        }]
     },
     {
         timestamps: true
@@ -139,4 +147,4 @@ AgentSchema.pre('save', function () {
     }
 });
 
-export default mongoose.model("Agent", AgentSchema);
+export default mongoose.model("Agent", AgentSchema, "agents");

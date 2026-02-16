@@ -3,7 +3,7 @@ import path from 'path';
 import stream from 'stream';
 import util from 'util';
 import pdf from 'pdf-parse';
-import Knowledge from '../models/Knowledge.model.js';
+import Agent from '../models/Agents.js';
 import * as aiService from '../services/aibaseService.js';
 import { uploadToCloudinary } from '../services/cloudinary.service.js';
 import mammoth from 'mammoth';
@@ -115,18 +115,27 @@ export const uploadDocument = async (req, res) => {
             }
         }
 
-        // 4. Always Store Metadata
+        // 4. Always Store Metadata (Consolidated into Agent model)
         try {
-            await Knowledge.create({
-                filename: originalName,
-                cloudinaryUrl: cloudinaryResult.secure_url,
-                cloudinaryId: cloudinaryResult.public_id,
-                mimetype: mimeType,
-                size: fileSize
-            });
-            logger.info(`Document metadata saved to MongoDB. RAG Enabled: ${!!textContent}`);
+            await Agent.findOneAndUpdate(
+                { slug: 'system-knowledge-base' },
+                {
+                    $setOnInsert: { agentName: 'System Knowledge Base', category: 'system' },
+                    $push: {
+                        knowledgeDocs: {
+                            filename: originalName,
+                            cloudinaryUrl: cloudinaryResult.secure_url,
+                            cloudinaryId: cloudinaryResult.public_id,
+                            mimetype: mimeType,
+                            size: fileSize
+                        }
+                    }
+                },
+                { upsert: true, new: true }
+            );
+            logger.info(`Document metadata saved to Agent (system-knowledge-base). RAG Enabled: ${!!textContent}`);
         } catch (dbError) {
-            logger.error(`MongoDB Save Error: ${dbError.message}`);
+            logger.error(`Agent Update Error: ${dbError.message}`);
         }
 
         res.status(200).json({
@@ -153,10 +162,15 @@ export const uploadDocument = async (req, res) => {
 // @access  Public
 export const getDocuments = async (req, res) => {
     try {
-        const documents = await Knowledge.find({}, 'filename uploadDate');
+        const agent = await Agent.findOne({ slug: 'system-knowledge-base' });
+        const documents = agent ? agent.knowledgeDocs : [];
         res.status(200).json({
             success: true,
-            data: documents
+            data: documents.map(d => ({
+                _id: d._id,
+                filename: d.filename,
+                uploadDate: d.uploadDate
+            }))
         });
     } catch (error) {
         logger.error(`Get Documents Error: ${error.message}`);
@@ -169,12 +183,15 @@ export const getDocuments = async (req, res) => {
 // @access  Public
 export const deleteDocument = async (req, res) => {
     try {
-        const document = await Knowledge.findById(req.params.id);
-        if (!document) {
-            return res.status(404).json({ success: false, message: 'Document not found' });
-        }
+        const agent = await Agent.findOneAndUpdate(
+            { slug: 'system-knowledge-base' },
+            { $pull: { knowledgeDocs: { _id: req.params.id } } },
+            { new: true }
+        );
 
-        await Knowledge.findByIdAndDelete(req.params.id);
+        if (!agent) {
+            return res.status(404).json({ success: false, message: 'Knowledge base agent not found' });
+        }
 
         // Reload Vector Store to remove the document context
         await aiService.reloadVectorStore();

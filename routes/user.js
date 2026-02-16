@@ -1,7 +1,7 @@
 import express from "express"
 import userModel from "../models/User.js"
 import { verifyToken } from "../middleware/authorization.js"
-import Transaction from "../models/Transaction.js"
+import Subscription from "../models/Subscription.js"
 
 const route = express.Router()
 
@@ -101,9 +101,9 @@ route.get("/all", verifyToken, async (req, res) => {
             .select('-password');
 
         // Fetch all transactions to map spend
-        const transactions = await Transaction.aggregate([
-            { $match: { status: 'Success' } },
-            { $group: { _id: "$buyerId", totalSpent: { $sum: "$amount" } } }
+        const transactions = await Subscription.aggregate([
+            { $match: { status: 'active' } },
+            { $group: { _id: "$userId", totalSpent: { $sum: "$paymentDetails.amount" } } }
         ]);
 
         const spendMap = transactions.reduce((acc, curr) => {
@@ -185,8 +185,8 @@ route.delete("/:id", verifyToken, async (req, res) => {
 
         // Cleanup: Delete chat sessions associated with this user
         if (user.chatSessions && user.chatSessions.length > 0) {
-            const ChatSession = (await import('../models/ChatSession.js')).default;
-            await ChatSession.deleteMany({ _id: { $in: user.chatSessions } });
+            const Conversation = (await import('../models/Conversation.js')).default;
+            await Conversation.deleteMany({ _id: { $in: user.chatSessions } });
         }
 
         await userModel.findByIdAndDelete(targetUserId);

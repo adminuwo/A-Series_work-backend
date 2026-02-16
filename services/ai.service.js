@@ -3,10 +3,10 @@ import { HuggingFaceTransformersEmbeddings } from "@langchain/community/embeddin
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import mongoose from "mongoose";
 import logger from "../utils/logger.js";
-import Knowledge from "../models/Knowledge.model.js";
+import Agent from "../models/Agents.js";
 import { Worker } from 'worker_threads';
 import path from 'path';
-import groqService from './groq.service.js';
+import vertexService from './vertex.service.js';
 
 // Initialize Groq Chat Model - REMOVED (Replaced by groq.service.js)
 // const model = new ChatGroq({ ... });
@@ -77,20 +77,27 @@ export const storeDocument = async (text, docId = null) => {
     }
 };
 
-export const chat = async (message, activeDocContent = null) => {
+export const chat = async (message, activeDocContent = null, options = {}) => {
     try {
         if (!message || typeof message !== 'string') {
             message = String(message || "");
         }
 
+        // Extract agentType from options (mode mapping)
+        const chatOptions = {
+            agentType: options.agentType || options.mode,
+            customSystemInstruction: options.systemInstruction
+        };
+
         // PRIORITY 1: Chat-Uploaded Document
         if (activeDocContent && activeDocContent.length > 0) {
             logger.info("[Chat Routing] Using Active Chat Document (Priority 1). Skipping RAG.");
-            return await groqService.askGroq(message, activeDocContent);
+            return await vertexService.askVertex(message, activeDocContent, chatOptions);
         }
 
         // PRIORITY 2: Company Knowledge Base (RAG)
-        const docCount = await Knowledge.countDocuments();
+        const agent = await Agent.findOne({ slug: 'system-knowledge-base' });
+        const docCount = agent ? agent.knowledgeDocs.length : 0;
         const hasDocs = docCount > 0;
 
         logger.info(`[Chat Routing] No Active Chat Doc. Checking Admin RAG. Docs in KB: ${docCount}`);
@@ -134,7 +141,7 @@ export const chat = async (message, activeDocContent = null) => {
                 contextText = "SOURCE: COMPANY KNOWLEDGE BASE\n\n" + contextText;
 
                 // Answer from Company RAG
-                return await groqService.askGroq(message, contextText);
+                return await vertexService.askVertex(message, contextText, chatOptions);
 
             } else {
                 logger.info(`[RAG] No relevant chunks found (All scores < ${THRESHOLD}). Fallback to General Knowledge.`);
@@ -142,8 +149,8 @@ export const chat = async (message, activeDocContent = null) => {
         }
 
         // PRIORITY 3: Answer from General Knowledge (Explicit No Context)
-        logger.info("[Chat Routing] Answering from General Knowledge (Groq).");
-        return await groqService.askGroq(message, null);
+        logger.info("[Chat Routing] Answering from General Knowledge (VertexAI).");
+        return await vertexService.askVertex(message, null, chatOptions);
 
     } catch (error) {
         logger.error(`Chat Handling Error: ${error.message}`);

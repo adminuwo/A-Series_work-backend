@@ -1,10 +1,10 @@
 import express from "express";
-import ChatSession from "../models/ChatSession.js";
+import Conversation from "../models/Conversation.js";
 import User from "../models/User.js";
 import Agent from "../models/Agents.js";
-import Report from "../models/Report.js";
-import SystemSetting from "../models/SystemSetting.js";
-import Notification from "../models/Notification.js";
+// import Report from "../models/Report.js";
+// import SystemSetting from "../models/SystemSetting.js";
+// import Notification from "../models/Notification.js";
 
 const router = express.Router();
 
@@ -12,7 +12,7 @@ const router = express.Router();
 // Matched to frontend: /api/dashboard/stats
 router.get('/dashboard/stats', async (req, res) => {
   try {
-    const sessionCount = await ChatSession.countDocuments();
+    const sessionCount = await Conversation.countDocuments();
     // In a real app, calculate actual token usage and active agents from DB
     res.json({
       totalChats: sessionCount,
@@ -32,9 +32,9 @@ router.get('/admin/stats', async (req, res) => {
     const [totalUsers, agents, openComplaintsCount, recentAgents, recentReports] = await Promise.all([
       User.countDocuments(),
       Agent.find().select('-avatar'), // Get all agents for inventory, excluding heavy avatar field
-      Report.countDocuments({ status: 'open' }),
+      0, // Report.countDocuments({ status: 'open' }),
       Agent.find().sort({ createdAt: -1 }).limit(3),
-      Report.find().sort({ timestamp: -1 }).limit(3)
+      [] // Report.find().sort({ timestamp: -1 }).limit(3)
     ]);
 
     console.log('[ADMIN STATS] Total agents found:', agents.length);
@@ -130,11 +130,14 @@ router.post('/automations/:id/toggle', (req, res) => {
 // Admin Settings (Persistent)
 router.get('/admin/settings', async (req, res) => {
   try {
+    /*
     let settings = await SystemSetting.findOne();
     if (!settings) {
       settings = await SystemSetting.create({});
     }
     res.json(settings);
+    */
+    res.json({ platformName: 'A-Series™', maintenanceMode: false, killSwitch: false });
   } catch (err) {
     console.error("Failed to fetch admin settings", err);
     res.status(500).json({ error: "Failed to fetch settings" });
@@ -144,16 +147,12 @@ router.get('/admin/settings', async (req, res) => {
 // Public System Settings (Read-Only, Safe Fields)
 router.get('/settings/public', async (req, res) => {
   try {
-    let settings = await SystemSetting.findOne();
-    if (!settings) settings = {}; // Return empty if not initialized
-
-    // Only return safe fields
     res.json({
-      platformName: settings.platformName || 'A-Series™',
-      supportPhone: settings.supportPhone || '+91 83598 90909',
-      announcement: settings.announcement || '',
-      allowPublicSignup: settings.allowPublicSignup ?? true,
-      contactEmail: settings.contactEmail || 'support@a-series.in'
+      platformName: 'A-Series™',
+      supportPhone: '+91 83598 90909',
+      announcement: '',
+      allowPublicSignup: true,
+      contactEmail: 'support@a-series.in'
     });
   } catch (err) {
     console.error("Failed to fetch public settings", err);
@@ -171,101 +170,7 @@ router.get('/settings/public', async (req, res) => {
 
 router.post('/admin/settings', async (req, res) => {
   try {
-    let settings = await SystemSetting.findOne();
-    const wasMaintenance = settings ? settings.maintenanceMode : false;
-    const wasKillSwitch = settings ? settings.killSwitch : false;
-    const oldAnnouncement = settings ? settings.announcement : '';
-
-    if (!settings) {
-      settings = new SystemSetting(req.body);
-    } else {
-      Object.assign(settings, req.body);
-    }
-    await settings.save();
-
-
-    console.log(`[DEBUG] Maintenance Mode Toggle: Was ${wasMaintenance}, New ${req.body.maintenanceMode}`);
-
-    // Check if Maintenance Mode was just DISABLED toggle off (OFF -> ON logic was above, this is ON -> OFF)
-    if (req.body.maintenanceMode && !wasMaintenance) {
-      const users = await User.find({}, '_id');
-      console.log(`[DEBUG] Found ${users.length} users to notify`);
-      const notifications = users.map(user => ({
-        userId: user._id,
-        title: 'notificationsPage.systemMaintenance.title',
-        message: 'notificationsPage.systemMaintenance.message',
-        type: 'warning'
-      }));
-
-      if (notifications.length > 0) {
-        await Notification.insertMany(notifications);
-        console.log(`[MAINTENANCE] Broadcasted notification to ${notifications.length} users.`);
-      }
-    } else if (!req.body.maintenanceMode && wasMaintenance) {
-      // Maintenance Mode JUST TURNED OFF
-      const users = await User.find({}, '_id');
-      const notifications = users.map(user => ({
-        userId: user._id,
-        title: 'notificationsPage.systemRestored.title',
-        message: 'notificationsPage.systemRestored.message',
-        type: 'success'
-      }));
-
-      if (notifications.length > 0) {
-        await Notification.insertMany(notifications);
-        console.log(`[MAINTENANCE RESTORE] Broadcasted notification to ${notifications.length} users.`);
-      }
-    }
-
-    // Check if Kill-Switch was just enabled
-    if (req.body.killSwitch && !wasKillSwitch) {
-      const users = await User.find({}, '_id');
-      const notifications = users.map(user => ({
-        userId: user._id,
-        title: 'notificationsPage.criticalAlert.title',
-        message: 'notificationsPage.criticalAlert.message',
-        type: 'error'
-      }));
-
-      if (notifications.length > 0) {
-        await Notification.insertMany(notifications);
-        console.log(`[KILL-SWITCH] Broadcasted notification to ${notifications.length} users.`);
-      }
-    } else if (!req.body.killSwitch && wasKillSwitch) {
-      // Kill-Switch JUST TURNED OFF
-      const users = await User.find({}, '_id');
-      const notifications = users.map(user => ({
-        userId: user._id,
-        title: 'notificationsPage.servicesRestored.title',
-        message: 'notificationsPage.servicesRestored.message',
-        type: 'success'
-      }));
-
-      if (notifications.length > 0) {
-        await Notification.insertMany(notifications);
-        console.log(`[KILL-SWITCH RESTORE] Broadcasted notification to ${notifications.length} users.`);
-      }
-    }
-
-    // Check if Announcement has changed and is not empty
-    const newAnnouncement = req.body.announcement;
-
-    if (newAnnouncement && newAnnouncement !== oldAnnouncement) {
-      const users = await User.find({}, '_id');
-      const notifications = users.map(user => ({
-        userId: user._id,
-        title: 'notificationsPage.newAnnouncement',
-        message: newAnnouncement,
-        type: 'info'
-      }));
-
-      if (notifications.length > 0) {
-        await Notification.insertMany(notifications);
-        console.log(`[ANNOUNCEMENT] Broadcasted notification to ${notifications.length} users.`);
-      }
-    }
-
-    res.json(settings);
+    res.json({ success: true, message: "Settings logic disabled due to model removal" });
   } catch (err) {
     console.error("Failed to update admin settings", err);
     res.status(500).json({ error: "Failed to update settings" });

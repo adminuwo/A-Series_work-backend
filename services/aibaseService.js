@@ -3,8 +3,8 @@ import { HuggingFaceTransformersEmbeddings } from "@langchain/community/embeddin
 import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import mongoose from "mongoose";
 import logger from "../utils/logger.js";
-import Knowledge from "../models/Knowledge.model.js";
-import groqService from './groq.service.js';
+import Agent from "../models/Agents.js";
+import vertexService from './vertex.service.js';
 import { Worker } from 'worker_threads';
 import path from 'path';
 
@@ -79,28 +79,27 @@ export const storeDocument = async (text, docId = null) => {
     }
 };
 
-export const chat = async (message, activeDocContent = null) => {
+export const chat = async (message, activeDocContent = null, options = {}) => {
     try {
         if (!message || typeof message !== 'string') {
             message = String(message || "");
         }
 
+        // Extract agentType from options
+        const chatOptions = {
+            agentType: options.agentType || options.mode,
+            customSystemInstruction: options.systemInstruction
+        };
+
         // PRIORITY 1: Chat-Uploaded Document
         if (activeDocContent && activeDocContent.length > 0) {
             logger.info("[Chat Routing] Using Active Chat Document (Priority 1). Skipping RAG.");
-            // Pass the document text directly. 
-            // We prepend a special marker text so GroqService knows it's a Chat Doc vs Company Doc?
-            // Actually GroqService just takes context. We can handle labeling here if we want, or just rely on context prompt.
-            // Let's rely on GroqService, but we need to tell it SOURCE via prompt?
-            // Simpler: Just rely on context.
-            // Wait, we need to label it "📄 From Chat-Uploaded Document". 
-            // GroqService logic uses "📄 From Your Document" generally. We might want to customize labeling.
-            // For now, let's just pass context. The generic "From Your Document" fits this use case well.
-            return await groqService.askGroq(message, activeDocContent);
+            return await vertexService.askVertex(message, activeDocContent, chatOptions);
         }
 
         // PRIORITY 2: Company Knowledge Base (RAG)
-        const docCount = await Knowledge.countDocuments();
+        const agent = await Agent.findOne({ slug: 'system-knowledge-base' });
+        const docCount = agent ? agent.knowledgeDocs.length : 0;
         const hasDocs = docCount > 0;
 
         logger.info(`[Chat Routing] No Active Chat Doc. Checking Admin RAG. Docs in KB: ${docCount}`);
@@ -140,13 +139,11 @@ export const chat = async (message, activeDocContent = null) => {
                     .join("\\n\\n");
                 logger.info(`[RAG] Found ${relevantDocs.length} RELEVANT docs (Score >= ${THRESHOLD}).`);
 
-                // IMPORTANT: If we found RAG docs, the prompt in GroqService interprets this as "Your Document".
-                // Ideally we want to distinguish "Company Documents" vs "Chat Upload".
-                // Since GroqService just has one "Context" slot, we can prepend a header to contextText.
+                // Prepend source header
                 contextText = "SOURCE: COMPANY KNOWLEDGE BASE\\n\\n" + contextText;
 
                 // PRIORITY 2: Answer from Company RAG
-                return await groqService.askGroq(message, contextText);
+                return await vertexService.askVertex(message, contextText, chatOptions);
 
             } else {
                 logger.info(`[RAG] No relevant chunks found (All scores < ${THRESHOLD}). Fallback to General Knowledge.`);
@@ -154,8 +151,8 @@ export const chat = async (message, activeDocContent = null) => {
         }
 
         // PRIORITY 3: Answer from General Knowledge (Explicit No Context)
-        logger.info("[Chat Routing] Answering from General Knowledge (Groq).");
-        return await groqService.askGroq(message, null);
+        logger.info("[Chat Routing] Answering from General Knowledge (VertexAI).");
+        return await vertexService.askVertex(message, null, chatOptions);
 
     } catch (error) {
         logger.error(`Chat Handling Error: ${error.message}`);

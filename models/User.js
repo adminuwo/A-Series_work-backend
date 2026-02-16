@@ -31,7 +31,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: "user"
     },
-    chatSessions: [{ type: mongoose.Schema.Types.ObjectId, ref: "ChatSession" }],
+    chatSessions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Conversation" }],
     verificationCode: String,
     isBlocked: {
         type: Boolean,
@@ -148,4 +148,4 @@ const userSchema = new mongoose.Schema({
     }]
 }, { timestamps: true });
 
-export default mongoose.model('User', userSchema);
+export default mongoose.model('User', userSchema, 'users');

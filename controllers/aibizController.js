@@ -1,11 +1,11 @@
-import AIBIZHistory from "../models/AIBIZHistory.js";
+import Conversation from "../models/Conversation.js";
 import { genAIInstance as genAI } from "../config/vertex.js";
 import mongoose from "mongoose";
 
 // Using gemini-1.5-flash as it is the standard model configured in this project
 // equivalent to gemini-1.5-flash from the original AIBIZ code 
-const generativeModel = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+const bizModel = genAI.getGenerativeModel({
+    model: "gemini-1.5-flash",
 });
 
 /* ------------------ Generate + Save ------------------ */
@@ -102,16 +102,16 @@ ${sections}
             });
         }
 
-        /* -------- SAVE TO MONGODB -------- */
-        const saved = await AIBIZHistory.create({
-            businessName,
-            idea,
-            industry,
-            targetAudience,
-            tone,
-            docType,
-            content: text,
-            userId: req.user ? req.user.id : null // Store userId if authenticated
+        /* -------- SAVE TO CONVERSATION -------- */
+        const saved = await Conversation.create({
+            userId: req.user ? req.user.id : 'admin',
+            title: `${docLabel}: ${businessName || idea.substring(0, 20)}`,
+            agentType: 'AIBIZ',
+            messages: [
+                { role: 'user', content: `Generate ${docLabel} for ${businessName}\nIdea: ${idea}` },
+                { role: 'assistant', content: text }
+            ],
+            sessionId: `aibiz_${Date.now()}`
         });
 
         console.log(`✅ Document saved: ${saved._id}`);
@@ -144,16 +144,12 @@ export const getHistory = async (req, res) => {
         // Let's filter by userId if req.user exists, otherwise return empty or all?
         // Given usage of verifyToken in routes, we will have req.user.
 
-        const query = req.user ? { userId: req.user.id } : {};
-        // Fallback: If no userId usage intended yet, maybe comment out. 
-        // But AIBIZ original didn't have auth. 
-        // I will use `req.user ? { userId: req.user.id } : {}` to support both modes, 
-        // but since I added userId to model, old docs won't show up. 
-        // Actually, to make it work seamlessly with the "Integration" context, and since the user probably wants to see *their* generated content:
+        const query = { agentType: 'AIBIZ' };
+        if (req.user) {
+            query.userId = req.user.id;
+        }
 
-        // NOTE: If I enforce userId filter, the user won't see anything initially. That's fine.
-
-        const history = await AIBIZHistory.find(query).sort({ createdAt: -1 });
+        const history = await Conversation.find(query).sort({ createdAt: -1 });
         console.log(`📋 Fetched ${history.length} documents from history`);
         res.json(history);
     } catch (err) {
@@ -182,7 +178,7 @@ export const deleteHistory = async (req, res) => {
             query.userId = req.user.id;
         }
 
-        const deletedDoc = await AIBIZHistory.findOneAndDelete(query);
+        const deletedDoc = await Conversation.findOneAndDelete(query);
 
         if (!deletedDoc) {
             return res.status(404).json({

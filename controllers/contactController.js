@@ -1,4 +1,4 @@
-import ContactSubmission from '../models/ContactSubmission.js';
+// import ContactSubmission from '../models/ContactSubmission.js';
 import nodemailer from 'nodemailer';
 
 // Configure nodemailer - only if email credentials are provided
@@ -39,8 +39,9 @@ export const submitContact = async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress;
     console.log('🌐 IP Address:', ipAddress);
 
-    // Create contact submission
-    const contactSubmission = new ContactSubmission({
+    // DB Persistence removed (Lean Architecture)
+    const contactSubmission = {
+      _id: 'mock_' + Date.now(),
       name,
       email,
       phone,
@@ -49,7 +50,8 @@ export const submitContact = async (req, res) => {
       message,
       ipAddress,
       userId: req.user?._id || null,
-    });
+      save: async () => { } // Mock save
+    };
 
     console.log('💾 Attempting to save contact submission...');
     await contactSubmission.save();
@@ -159,23 +161,9 @@ export const getAllSubmissions = async (req, res) => {
     if (status) filter.status = status;
     if (category) filter.category = category;
 
-    const submissions = await ContactSubmission.find(filter)
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .populate('userId', 'name email')
-      .populate('respondedBy', 'name email');
-
-    const total = await ContactSubmission.countDocuments(filter);
-
-    res.status(200).json({
-      success: true,
-      data: submissions,
-      pagination: {
-        current: page,
-        total: Math.ceil(total / limit),
-        totalRecords: total,
-      },
+    res.status(410).json({
+      success: false,
+      message: 'Submission retrieval disabled (Lean Architecture: Model deleted)',
     });
   } catch (error) {
     console.error('Error fetching submissions:', error);
@@ -191,31 +179,10 @@ export const getAllSubmissions = async (req, res) => {
  * GET /api/contact/submissions/:id
  */
 export const getSubmissionById = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const submission = await ContactSubmission.findById(id)
-      .populate('userId', 'name email')
-      .populate('respondedBy', 'name email');
-
-    if (!submission) {
-      return res.status(404).json({
-        success: false,
-        message: 'Submission not found',
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      data: submission,
-    });
-  } catch (error) {
-    console.error('Error fetching submission:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching submission',
-    });
-  }
+  res.status(410).json({
+    success: false,
+    message: 'Submission management disabled (Lean Architecture: Model deleted)',
+  });
 };
 
 /**
@@ -223,80 +190,10 @@ export const getSubmissionById = async (req, res) => {
  * PATCH /api/contact/submissions/:id/status
  */
 export const updateSubmissionStatus = async (req, res) => {
-  try {
-    if (!req.user || req.user.role !== 'admin') {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied. Admin only.',
-      });
-    }
-
-    const { id } = req.params;
-    const { status, response } = req.body;
-
-    if (!['new', 'read', 'in-progress', 'resolved', 'closed'].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid status',
-      });
-    }
-
-    const submission = await ContactSubmission.findByIdAndUpdate(
-      id,
-      {
-        status,
-        response: response || undefined,
-        respondedBy: req.user._id,
-        respondedAt: new Date(),
-      },
-      { new: true }
-    );
-
-    if (!submission) {
-      return res.status(404).json({
-        success: false,
-        message: 'Submission not found',
-      });
-    }
-
-    // Send response email if provided
-    if (response && transporter) {
-      try {
-        await transporter.sendMail({
-          from: process.env.EMAIL,
-          to: submission.email,
-          subject: `Response to your submission: ${submission.subject}`,
-          html: `
-            <h2>Response to Your Inquiry</h2>
-            <p>Hi ${submission.name},</p>
-            <p>Thank you for reaching out to us. Here's our response:</p>
-            <hr>
-            <p>${response.replace(/\n/g, '<br>')}</p>
-            <hr>
-            <p>If you have further questions, feel free to contact us again.</p>
-            <p>Best regards,<br>A-Series™ Support Team</p>
-          `,
-        });
-        console.log('✅ Response email sent');
-      } catch (emailError) {
-        console.error('⚠️  Error sending response email:', emailError.message);
-      }
-    } else if (response && !transporter) {
-      console.log('📝 Email not configured. Response would be:', response);
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Submission updated successfully',
-      data: submission,
-    });
-  } catch (error) {
-    console.error('Error updating submission:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating submission',
-    });
-  }
+  res.status(410).json({
+    success: false,
+    message: 'Submission management disabled (Lean Architecture: Model deleted)',
+  });
 };
 
 /**
@@ -314,18 +211,9 @@ export const deleteSubmission = async (req, res) => {
 
     const { id } = req.params;
 
-    const submission = await ContactSubmission.findByIdAndDelete(id);
-
-    if (!submission) {
-      return res.status(404).json({
-        success: false,
-        message: 'Submission not found',
-      });
-    }
-
-    res.status(200).json({
-      success: true,
-      message: 'Submission deleted successfully',
+    res.status(410).json({
+      success: false,
+      message: 'Submission management disabled (Lean Architecture: Model deleted)',
     });
   } catch (error) {
     console.error('Error deleting submission:', error);

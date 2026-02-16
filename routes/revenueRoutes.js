@@ -1,5 +1,5 @@
 import express from 'express';
-import Transaction from '../models/Transaction.js';
+import Subscription from '../models/Subscription.js';
 import Agent from '../models/Agents.js';
 import { verifyToken } from '../middleware/authorization.js';
 
@@ -12,24 +12,23 @@ const router = express.Router();
 router.get('/admin/all-transactions', verifyToken, async (req, res) => {
     try {
         // In a real scenario, check for admin role here
-        const transactions = await Transaction.find()
+        const transactions = await Subscription.find()
             .populate('agentId', 'agentName')
-            .populate('buyerId', 'name email')
-            .populate('vendorId', 'name email')
+            .populate('userId', 'name email')
             .sort({ createdAt: -1 });
 
         // Format for frontend
         const formatted = transactions.map(t => ({
             id: t._id,
             date: t.createdAt,
-            type: 'Subscription', // Defaulting for now
-            appName: t.agentId ? t.agentId.agentName : 'Deleted Agent',
-            amount: t.amount,
-            platformFee: t.platformFee,
-            netAmount: t.netAmount,
+            type: t.planType,
+            appName: t.agentId ? t.agentId.agentName : 'Platform',
+            amount: t.paymentDetails.amount,
+            platformFee: t.paymentDetails.amount * 0.5,
+            netAmount: t.paymentDetails.amount * 0.5,
             status: t.status,
-            buyer: t.buyerId ? t.buyerId.name : 'Unknown User',
-            vendor: t.vendorId ? t.vendorId.name : 'System'
+            buyer: t.userId ? t.userId.name : 'Unknown User',
+            vendor: 'System'
         }));
 
         res.json(formatted);
@@ -43,7 +42,7 @@ router.get('/admin/all-transactions', verifyToken, async (req, res) => {
 router.get('/stats', verifyToken, async (req, res) => {
     try {
         // In a real scenario, check for admin role here
-        const transactions = await Transaction.find({ amount: { $gt: 0 } });
+        const transactions = await Subscription.find({ 'paymentDetails.amount': { $gt: 0 } });
 
         let totalGross = 0;
         let totalVendorPayouts = 0; // Using for Operational Costs
@@ -104,9 +103,9 @@ router.get('/user/transactions', verifyToken, async (req, res) => {
         const userId = req.user.id;
 
         // Fetch transactions where this user is the buyer and it's a paid transaction
-        const transactions = await Transaction.find({
-            buyerId: userId,
-            amount: { $gt: 0 } // Only show paid transactions
+        const transactions = await Subscription.find({
+            userId: userId,
+            'paymentDetails.amount': { $gt: 0 } // Only show paid transactions
         })
             .populate('agentId', 'agentName')
             .sort({ createdAt: -1 });
@@ -125,10 +124,9 @@ router.get('/invoice/:id', verifyToken, async (req, res) => {
         const transactionId = req.params.id;
 
         // Fetch transaction details
-        const transaction = await Transaction.findById(transactionId)
+        const transaction = await Subscription.findById(transactionId)
             .populate('agentId', 'agentName')
-            .populate('vendorId', 'name email')
-            .populate('buyerId', 'name email');
+            .populate('userId', 'name email');
 
         if (!transaction) {
             return res.status(404).json({ error: 'Transaction not found' });
@@ -188,15 +186,15 @@ router.get('/invoice/:id', verifyToken, async (req, res) => {
             <tr>
                 <td>Application Purchase</td>
                 <td>${transaction.agentId ? transaction.agentId.agentName : 'Unknown'}</td>
-                <td>$${transaction.amount.toFixed(2)}</td>
+                <td>$${transaction.paymentDetails.amount.toFixed(2)}</td>
             </tr>
             <tr>
                 <td colspan="2" style="text-align: right;"><strong>Platform Fee (50%):</strong></td>
-                <td>-$${transaction.platformFee.toFixed(2)}</td>
+                <td>-$${(transaction.paymentDetails.amount * 0.5).toFixed(2)}</td>
             </tr>
             <tr>
                 <td colspan="2" style="text-align: right;"><strong>Net Amount:</strong></td>
-                <td class="total">$${transaction.netAmount.toFixed(2)}</td>
+                <td class="total">$${(transaction.paymentDetails.amount * 0.5).toFixed(2)}</td>
             </tr>
         </tbody>
     </table>
