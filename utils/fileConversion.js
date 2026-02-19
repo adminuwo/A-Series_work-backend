@@ -7,7 +7,7 @@ const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
 const officeParser = require('officeparser');
 import PptxGenJS from 'pptxgenjs';
-import Tesseract from 'tesseract.js';
+import { performOCR } from './ocrService.js';
 
 /**
  * File Conversion Service for AISA
@@ -83,8 +83,7 @@ async function extractTextFromXlsx(buffer) {
 }
 
 async function extractTextFromImage(buffer) {
-    const { data: { text } } = await Tesseract.recognize(buffer, 'eng');
-    return text;
+    return await performOCR(buffer);
 }
 
 // --- FILE GENERATION HELPERS ---

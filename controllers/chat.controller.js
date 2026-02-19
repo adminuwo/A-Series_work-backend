@@ -6,7 +6,8 @@ import pdf from 'pdf-parse/lib/pdf-parse.js';
 import mammoth from 'mammoth';
 import xlsx from 'xlsx';
 import officeParser from 'officeparser';
-import Tesseract from 'tesseract.js';
+import { performOCR } from '../utils/ocrService.js';
+import mongoose from 'mongoose';
 
 
 // @desc    Chat with AI
@@ -111,14 +112,7 @@ export const uploadAttachment = async (req, res, next) => {
                 logger.error(`[Chat Upload] PPTX parse error: ${e.message}`);
             }
         } else if (mimeType.startsWith('image/')) {
-            try {
-                logger.info(`[Chat Upload] Starting OCR...`);
-                const { data: { text } } = await Tesseract.recognize(fileBuffer, 'eng');
-                parsedText = text;
-                logger.info(`[Chat Upload] OCR Complete: ${parsedText.length} chars.`);
-            } catch (e) {
-                logger.error(`[Chat Upload] OCR error: ${e.message}`);
-            }
+            parsedText = await performOCR(fileBuffer);
         } else if (mimeType === 'text/plain') {
             parsedText = fileBuffer.toString('utf8');
         }

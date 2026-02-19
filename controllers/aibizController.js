@@ -1,11 +1,11 @@
 import Conversation from "../models/Conversation.js";
-import { genAIInstance as genAI } from "../config/vertex.js";
+import { genAIInstance as genAI, modelName } from "../config/vertex.js";
 import mongoose from "mongoose";
 
 // Using gemini-1.5-flash as it is the standard model configured in this project
 // equivalent to gemini-1.5-flash from the original AIBIZ code 
 const bizModel = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: modelName,
 });
 
 /* ------------------ Generate + Save ------------------ */

@@ -13,7 +13,8 @@ const MODES = {
   DEEP_SEARCH: 'DEEP_SEARCH',
   IMAGE_GEN: 'IMAGE_GEN',
   VIDEO_GEN: 'VIDEO_GEN',
-  AUDIO_GEN: 'AUDIO_GEN'
+  AUDIO_GEN: 'AUDIO_GEN',
+  IMAGE_EDIT: 'IMAGE_EDIT'
 };
 
 const CODING_KEYWORDS = [
@@ -51,6 +52,13 @@ const CONVERSION_KEYWORDS = [
   'jpg to pdf', 'png to pdf', 'webp to pdf', 'txt to pdf'
 ];
 
+const IMAGE_EDIT_KEYWORDS = [
+  'edit', 'modify', 'change', 'background', 'remove bg', 'bg removal',
+  'retouch', 'lighting', 'color', 'brightness', 'contrast', 'photoshop',
+  'fix image', 'cleanup', 'clean up', 'erase', 'inpaint', 'outpaint',
+  'badlo', 'editing', 'retouching', 'background change', 'thoda change'
+];
+
 /**
  * Detect mode based on user message and attachments
  * @param {string} message - User's message content
@@ -63,28 +71,45 @@ export function detectMode(message = '', attachments = []) {
 
   console.log(`[MODE DETECTION] Processing message: "${lowerMessage}" with ${attachments ? attachments.length : 0} attachments`);
 
-  // Priority 1: Image/Video Generation Intent
+  // Priority 1: Image/Video/Audio Generation Intent (DEACTIVATED AUTO-DETECTION - Requires Explicit Selection OR specific keywords)
+
+  // Video Generation Intent
   if (
-    (lowerMessage.includes('image') || lowerMessage.includes('photo') || lowerMessage.includes('pic') || lowerMessage.includes('draw')) &&
-    (lowerMessage.includes('generate') || lowerMessage.includes('create') || lowerMessage.includes('make') || lowerMessage.includes('show'))
+    (lowerMessage.includes('video') || lowerMessage.includes('animation') || lowerMessage.includes('clip') || lowerMessage.includes('motion') || lowerMessage.includes('viedo')) &&
+    (lowerMessage.includes('generate') || lowerMessage.includes('create') || lowerMessage.includes('make') || lowerMessage.includes('render') || lowerMessage.includes('produce'))
+  ) {
+    return MODES.VIDEO_GEN;
+  }
+
+  // Image Generation Intent
+  if (
+    (lowerMessage.includes('image') || lowerMessage.includes('picture') || lowerMessage.includes('photo') || lowerMessage.includes('drawing') || lowerMessage.includes('art') || lowerMessage.includes('illustration') || lowerMessage.includes('sketch')) &&
+    (lowerMessage.includes('generate') || lowerMessage.includes('create') || lowerMessage.includes('make') || lowerMessage.includes('draw') || lowerMessage.includes('paint'))
   ) {
     return MODES.IMAGE_GEN;
   }
 
-  if (lowerMessage.includes('video') && (lowerMessage.includes('generate') || lowerMessage.includes('create') || lowerMessage.includes('make'))) {
-    return MODES.VIDEO_GEN;
-  }
-
-  // Audio Generation Intent
+  // Audio/Music Generation Intent
   if (
-    (lowerMessage.includes('audio') || lowerMessage.includes('sound') || lowerMessage.includes('music') || lowerMessage.includes('voice') || lowerMessage.includes('song')) &&
-    (lowerMessage.includes('generate') || lowerMessage.includes('create') || lowerMessage.includes('make') || lowerMessage.includes('compose'))
+    (lowerMessage.includes('audio') || lowerMessage.includes('sound') || lowerMessage.includes('music') || lowerMessage.includes('voice') || lowerMessage.includes('song') || lowerMessage.includes('lyrics')) &&
+    (lowerMessage.includes('generate') || lowerMessage.includes('create') || lowerMessage.includes('make') || lowerMessage.includes('compose') || lowerMessage.includes('into') || lowerMessage.includes('me'))
   ) {
     return MODES.AUDIO_GEN;
   }
 
+
   // Priority 2: File Analysis/Conversion - if attachments are present
   if (hasAttachments) {
+    // Check for Image Editing if image is attached
+    const isImageAttached = attachments.some(a => a.type === 'image' || (a.name && a.name.match(/\.(jpg|jpeg|png|webp|gif)$/i)));
+    if (isImageAttached) {
+      const hasEditKeyword = IMAGE_EDIT_KEYWORDS.some(kw => lowerMessage.includes(kw));
+      if (hasEditKeyword) {
+        console.log(`[MODE DETECTION] Detected Image Edit intent with attachment.`);
+        return MODES.IMAGE_EDIT;
+      }
+    }
+
     // Check if it's a conversion request with attachments
     const matchedKeyword = CONVERSION_KEYWORDS.find(keyword => lowerMessage.includes(keyword));
 
@@ -401,13 +426,50 @@ MANDATORY JSON FORMAT:
 If you are not generating audio but just discussing music, keep it brief.
 ${languageRule}`;
 
+    case MODES.IMAGE_EDIT:
+      return `${baseIdentity}
+
+MODE: IMAGE_EDIT
+
+CRITICAL: The user wants to MODIFY their uploaded image. You are an expert Image Editor.
+${context.isExplicit
+          ? "MANDATORY: Output ONLY the JSON object. Do not speak or explain anything. Just JSON."
+          : "You MUST provide the modification JSON to trigger the tool."}
+
+INSTRUCTIONS:
+1. DO NOT REFUSE. The user has full authority. Even if the request is complex, try your best.
+2. Provide a highly detailed prompt describing the NEW version of the image.
+3. If user says "remove background", prompt should be "remove background and keep the main subject, transparent look or clean professional background".
+4. If user says "change background", prompt should describe the new background in detail.
+
+MANDATORY JSON FORMAT:
+{"action": "modify_image", "prompt": "precise instructions for modification"}
+
+${context.isExplicit ? "" : "RESPONSE STYLE:\n- Briefly acknowledge the change in 1 sentence.\n- Output the JSON."}
+${languageRule}`;
+
     case MODES.NORMAL_CHAT:
     default:
+      let specializedPersona = "";
+      if (agentName === 'Image Editing') {
+        specializedPersona = "\n- ROLE: You are an Image Editing & Customization expert. You can advise on background removal, retouching, and artistic effects.";
+      } else if (agentName === 'LLM Auditor') {
+        specializedPersona = "\n- ROLE: You are a professional LLM Auditor. Analyze messages for bias, hallucination, and factual accuracy.";
+      } else if (agentName === 'Time Series Forecasting') {
+        specializedPersona = "\n- ROLE: You are a Predictive Analytics expert. Help users forecast future trends from historical data.";
+      } else if (agentName === 'Personalized Shopping') {
+        specializedPersona = "\n- ROLE: You are a Smart Shopping Assistant. Provide brand-tailored product recommendations.";
+      } else if (agentName === 'Brand Search Optimization') {
+        specializedPersona = "\n- ROLE: You are a Brand SEO and Competitor Analyst. Help users dominate search results.";
+      } else if (agentName === 'Data Science') {
+        specializedPersona = "\n- ROLE: You are a Data Science expert. Help with data cleaning, analysis, and visualization logic.";
+      }
+
       return `${baseIdentity}
 
 MODE: NORMAL_CHAT
 
-You are a friendly, intelligent conversational assistant.
+You are a friendly, intelligent ${agentName === 'AISA' ? 'conversational assistant' : 'specialized AI expert'}.${specializedPersona}
 
 RESPONSE BEHAVIOR:
 - Answer directly without greeting messages

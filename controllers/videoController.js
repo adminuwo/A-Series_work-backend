@@ -70,52 +70,56 @@ export const generateVideoFromPrompt = async (prompt, duration, quality) => {
       {
         instances: [{ prompt: prompt }],
         parameters: {
-          video_length_seconds: duration || 5, // Veo param might use underscores
-          sampleCount: 1,
-          aspectRatio: "16:9"
+          video_length_seconds: duration || 5,
+          sample_count: 1,
+          aspect_ratio: "16:9"
         }
       },
       {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 180000 // 3 minutes timeout
       }
     );
 
     if (response.data && response.data.predictions && response.data.predictions[0]) {
       const prediction = response.data.predictions[0];
-
-      // Veo often returns a 'video' object containing 'bytesBase64Encoded' OR 'gcsUri'
-      // We check for base64 first
       let base64Data = prediction.bytesBase64Encoded || prediction.video?.bytesBase64Encoded;
 
-      // As valid fallback for older models or variations
       if (!base64Data && typeof prediction === 'string') {
         base64Data = prediction;
       }
 
-      // If we only get a GCS URI (Cloud Storage), we can't upload to Cloudinary directly from here easily without downloading
-      // BUT, checking logs, Veo usually supports base64 for short clips.
-
       if (base64Data) {
         const buffer = Buffer.from(base64Data, 'base64');
-        // Upload to Cloudinary
         const uploadResult = await uploadToCloudinary(buffer, {
           resource_type: 'video',
           folder: 'aisa_generated_videos'
         });
         logger.info(`[VERTEX VEO] Uploaded to Cloudinary: ${uploadResult.secure_url}`);
         return uploadResult.secure_url;
-      } else {
-        logger.warn("[VERTEX VEO] No base64 data found. Full prediction keys:", Object.keys(prediction));
       }
     }
 
     throw new Error('Vertex AI Veo did not return a valid video payload.');
 
   } catch (error) {
-    logger.error(`[VERTEX VIDEO ERROR] ${error.message} - Helper fallback normally would trigger here.`);
+    logger.error(`[VERTEX VIDEO ERROR] ${error.message}. Attempting Pollinations fallback...`);
+
+    // Fallback to Pollinations so the user at least gets something
+    try {
+      const fallbackResult = await generateVideoWithPollinations(prompt, duration, quality);
+      if (fallbackResult) {
+        const fallbackUrl = typeof fallbackResult === 'object' ? fallbackResult.url : fallbackResult;
+        logger.info(`[VIDEO FALLBACK] Success with Pollinations: ${fallbackUrl}`);
+        return fallbackUrl;
+      }
+    } catch (fallbackError) {
+      logger.error(`[VIDEO FALLBACK ERROR] ${fallbackError.message}`);
+    }
+
     throw error;
   }
 };
@@ -153,14 +157,19 @@ const pollReplicateResult = async (predictionId, apiKey, maxAttempts = 60) => {
 // Alternative: Generate video using Pollinations API (free)
 export const generateVideoWithPollinations = async (prompt, duration, quality) => {
   try {
-    // Pollinations offers free video generation via API
-    // Pollinations offers free generation via API
-    // Note: Video generation endpoint is deprecated/moved. Using high-quality image as preview.
-    // Using the /p/ endpoint which is more reliable for the new version
-    const videoUrl = `https://pollinations.ai/p/${encodeURIComponent(prompt)}`;
+    // Pollinations offers free visual generation via API
+    // Clean prompt: remove everything except letters, numbers and spaces
+    const cleanPrompt = prompt.replace(/[^a-zA-Z0-9\s]/g, ' ').trim();
+    const finalPrompt = cleanPrompt || "Cinematic AI Video";
+    const shortPrompt = finalPrompt.substring(0, 100);
 
-    logger.info(`[POLLINATIONS VIDEO] Generated: ${videoUrl}`);
-    return videoUrl;
+    const result = {
+      url: `https://pollinations.ai/p/${encodeURIComponent(shortPrompt)}?width=1024&height=576&seed=${Math.floor(Math.random() * 1000000)}`,
+      type: 'video'
+    };
+
+    logger.info(`[POLLINATIONS VIDEO] Generated: ${result.url}`);
+    return result;
   } catch (error) {
     logger.error(`[POLLINATIONS ERROR] ${error.message}`);
     return null;

@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import mammoth from 'mammoth';
-import Tesseract from 'tesseract.js';
+import { performOCR } from '../utils/ocrService.js';
 import officeParser from 'officeparser';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -176,8 +176,7 @@ export const synthesizeFile = async (req, res) => {
                         textToRead = result.value;
                     }
                 } else if (mimeType.startsWith('image/')) {
-                    const { data: { text } } = await Tesseract.recognize(buffer, 'eng+hin');
-                    textToRead = text;
+                    textToRead = await performOCR(buffer, 'eng+hin');
                 } else if (mimeType.startsWith('text/')) {
                     textToRead = buffer.toString('utf-8');
                 } else {

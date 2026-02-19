@@ -48,6 +48,21 @@ const AgentSchema = new mongoose.Schema(
             default: ""
         },
 
+        fullDesc: {
+            type: String,
+            default: ""
+        },
+
+        features: {
+            type: [String],
+            default: []
+        },
+
+        bgGradient: {
+            type: String,
+            default: "bg-gradient-to-br from-gray-500 to-gray-600"
+        },
+
         category: {
             type: String,
             required: true,

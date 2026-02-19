@@ -5,6 +5,18 @@ import cors from "cors";
 import connectDB from "./config/db.js";
 import chatRoutes from "./routes/chatRoutes.js";
 
+// Global process error handlers to prevent crashes from unhandled library errors (like Tesseract workers)
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('[CRITICAL] Uncaught Exception:', err.message);
+  console.error(err.stack);
+  // Optional: Graceful exit if it's a truly fatal state, but usually nodemon will restart us
+  // process.exit(1); 
+});
+
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import agentRoutes from "./routes/agentRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
@@ -34,10 +46,13 @@ import videoRoutes from './routes/videoRoutes.js';
 dotenv.config();
 const app = express();
 const PORT = process.env.PORT
+import { seedTools } from "./utils/seedTools.js";
+
 // Connect to Database
-connectDB().then(() => {
+connectDB().then(async () => {
   console.log("Database connected, initializing services...");
-  aibaseService.initializeFromDB();
+  await aibaseService.initializeFromDB();
+  await seedTools();
 });
 
 

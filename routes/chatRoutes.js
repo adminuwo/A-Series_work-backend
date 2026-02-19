@@ -15,7 +15,8 @@ import { requiresWebSearch, extractSearchQuery, processSearchResults, getWebSear
 import { performWebSearch } from "../services/searchService.js";
 import { convertFile } from "../utils/fileConversion.js";
 import { generateVideoFromPrompt } from "../controllers/videoController.js";
-import { generateImageFromPrompt } from "../controllers/image.controller.js";
+import { generateImageFromPrompt, modifyImageFromPrompt } from "../controllers/image.controller.js";
+import { generateMusicFromPrompt } from "../controllers/music.controller.js";
 
 import axios from "axios";
 
@@ -29,7 +30,9 @@ const checkGuestLimits = async (req, sessionId) => {
 
 // Get all chat sessions (summary)
 router.post("/", optionalVerifyToken, identifyGuest, async (req, res) => {
-  const { content, history, systemInstruction, image, video, document, language, model, mode, sessionId } = req.body;
+  const { content, history, systemInstruction, image, video, document, language, model, mode, sessionId, agentType } = req.body;
+
+  let detectedMode = mode; // Pre-define for catch block accessibility
 
   try {
     // Enforce limits for guests
@@ -111,18 +114,33 @@ router.post("/", optionalVerifyToken, identifyGuest, async (req, res) => {
     if (Array.isArray(video)) allAttachments.push(...video);
     else if (video) allAttachments.push(video);
 
-    let detectedMode = mode || detectMode(content, allAttachments);
+    detectedMode = mode || detectMode(content, allAttachments);
     if (detectedMode === 'DOCUMENT_CONVERT') detectedMode = 'FILE_CONVERSION';
 
-    // Check if mode was explicitly provided by the user (tool selected)
     const isExplicit = !!mode;
+    const agentName = agentType || 'AISA';
+    const agentCategory = req.body.agentCategory || 'General';
+
+    // Force mode if using a specialized agent but detection failed
+    if (detectedMode === 'NORMAL_CHAT') {
+      const lowerAgentName = agentName.toLowerCase();
+      if (lowerAgentName.includes('video')) {
+        detectedMode = 'VIDEO_GEN';
+      } else if (lowerAgentName.includes('image')) {
+        detectedMode = 'IMAGE_GEN';
+      } else if (lowerAgentName.includes('music') || lowerAgentName.includes('lyria')) {
+        detectedMode = 'AUDIO_GEN';
+      }
+    }
 
     const modeSystemInstruction = getModeSystemInstruction(detectedMode, language || 'English', {
       fileCount: allAttachments.length,
-      isExplicit // Pass flag to control explanation vs strict JSON
+      isExplicit, // Pass flag to control explanation vs strict JSON
+      agentName,
+      agentCategory
     });
 
-    console.log(`[MODE DETECTION] Detected mode: ${detectedMode} for message: "${content?.substring(0, 50)}..."`);
+    console.log(`[MODE DETECTION] Detected mode: ${detectedMode} for agent: ${agentName} message: "${content?.substring(0, 50)}..."`);
 
     // Construct parts from history + current message
     let parts = [];
@@ -132,17 +150,23 @@ router.post("/", optionalVerifyToken, identifyGuest, async (req, res) => {
     let finalSystemInstruction = systemInstruction || modeSystemInstruction;
     if (detectedMode === 'FILE_CONVERSION' || detectedMode === 'FILE_ANALYSIS') {
       finalSystemInstruction = modeSystemInstruction;
-    } else {
-      // Only add standard rules for non-specialized modes to avoid instruction collision
+    } else if (detectedMode === 'IMAGE_GEN' || detectedMode === 'VIDEO_GEN' || detectedMode === 'AUDIO_GEN' || detectedMode === 'IMAGE_EDIT') {
+      // Only add standard rules for specialized modes to avoid instruction collision
       const MANDATORY_JSON_RULES = `
-MANDATORY: If the user asks to GENERATE AN IMAGE, output ONLY:
-{"action": "generate_image", "prompt": "detailed description"}
+MANDATORY: If the user asks to GENERATE AN IMAGE, picture or art, you MUST output ONLY the JSON object. Do not provide text explanations.
+{"action": "generate_image", "prompt": "detailed, high-quality description for the image"}
 
-MANDATORY: If the user asks to GENERATE A VIDEO, output ONLY:
-{"action": "generate_video", "prompt": "detailed description"}
+MANDATORY: If the user asks to GENERATE A VIDEO, clip or animation, you MUST output ONLY the JSON object. Even if you are a "text AI", you trigger the tool via JSON.
+{"action": "generate_video", "prompt": "highly detailed, cinematic, high-fidelity description for the video"}
 
-Do not output any other text or explanation if you are triggering these actions.`;
+MANDATORY: If the user asks to GENERATE MUSIC, AUDIO or SONG, you MUST output ONLY the JSON object.
+{"action": "generate_audio", "prompt": "highly detailed description for music generation including style, instruments, and any lyrics provided", "duration": 30}
+
+CRITICAL: Your output MUST be a valid JSON object. DO NOT provide any text before or after the JSON. DO NOT explain that you are an AI or describe the scene in text unless the user specifically asks for a text description ONLY.`;
       finalSystemInstruction = `${finalSystemInstruction}\n\n${MANDATORY_JSON_RULES}`;
+    } else if (agentType && agentType !== 'AISA') {
+      // For specialized agents, append the mode instruction to the base identity
+      finalSystemInstruction = `${modeSystemInstruction}\n\nRemember, your specific persona is ${agentName} from the ${agentCategory} category.`;
     }
 
     // Add conversation history if available
@@ -585,149 +609,207 @@ Do not output any other text or explanation if you are triggering these actions.
     // Check for Media (Video/Image) Generation Action
     // Check for Media (Video/Image) Generation Action
     try {
-      console.log(`[MEDIA GEN] Analyzing reply: "${reply.substring(0, 100)}..."`);
+      if (detectedMode === 'IMAGE_GEN' || detectedMode === 'VIDEO_GEN' || detectedMode === 'IMAGE_EDIT' || detectedMode === 'AUDIO_GEN') {
+        console.log(`[MEDIA GEN] Analyzing reply: "${reply.substring(0, 100)}..."`);
 
-      // Helper to extract JSON object with balanced braces
-      const extractActionJson = (text) => {
-        // 1. Try to anchor on "action": "..." (support single/double quotes)
-        // We match strictly to avoid false positives, but allow slight whitespace variance
-        const anchorRegex = /["']action["']\s*:\s*["'](generate_video|generate_image)["']/;
-        const actionMatch = text.match(anchorRegex);
+        // Helper to extract JSON object with balanced braces
+        const extractActionJson = (text) => {
+          // 1. Try to anchor on "action": "..." (support single/double quotes)
+          // We match strictly to avoid false positives, but allow slight whitespace variance
+          const anchorRegex = /["']action["']\s*:\s*["'](generate_video|generate_image|modify_image|generate_audio)["']/;
+          const actionMatch = text.match(anchorRegex);
 
-        if (actionMatch) {
-          const actionIndex = actionMatch.index;
-          // Find the starting brace '{' before the action
-          let startIndex = text.lastIndexOf('{', actionIndex);
+          if (actionMatch) {
+            const actionIndex = actionMatch.index;
+            // Find the starting brace '{' before the action
+            let startIndex = text.lastIndexOf('{', actionIndex);
 
-          if (startIndex !== -1) {
-            // Attempt balanced brace counting
-            let openBraces = 0;
-            let endIndex = -1;
-            let inString = false;
-            let escape = false;
+            if (startIndex !== -1) {
+              // Attempt balanced brace counting
+              let openBraces = 0;
+              let endIndex = -1;
+              let inString = false;
+              let escape = false;
 
-            for (let i = startIndex; i < text.length; i++) {
-              const char = text[i];
-              if (escape) { escape = false; continue; }
-              if (char === '\\') { escape = true; continue; }
-              if (char === '"' || char === "'") { inString = !inString; continue; } // Simplistic quote handling
+              for (let i = startIndex; i < text.length; i++) {
+                const char = text[i];
+                if (escape) { escape = false; continue; }
+                if (char === '\\') { escape = true; continue; }
+                if (char === '"' || char === "'") { inString = !inString; continue; } // Simplistic quote handling
 
-              if (!inString) {
-                if (char === '{') {
-                  openBraces++;
-                } else if (char === '}') {
-                  openBraces--;
-                  if (openBraces === 0) {
-                    endIndex = i + 1;
-                    break;
+                if (!inString) {
+                  if (char === '{') {
+                    openBraces++;
+                  } else if (char === '}') {
+                    openBraces--;
+                    if (openBraces === 0) {
+                      endIndex = i + 1;
+                      break;
+                    }
+                  }
+                }
+              }
+
+              if (endIndex !== -1) {
+                const jsonStr = text.substring(startIndex, endIndex);
+                try {
+                  const parsed = JSON.parse(jsonStr); // Strict JSON header check
+                  return { data: parsed, raw: jsonStr };
+                } catch (e) {
+                  console.warn("[MEDIA GEN] JSON parse failed, attempting manual field extraction...");
+                  // Handle malformed JSON from AI (e.g. missing quotes)
+                  const actionMatch = jsonStr.match(/["']action["']\s*:\s*["'](generate_video|generate_image|modify_image|generate_audio)["']/);
+                  const promptMatch = jsonStr.match(/["']prompt["']\s*:\s*["']([\s\S]*?)(?=["']\s*,\s*["']|["']\s*\}|$)/) || jsonStr.match(/["']prompt["']\s*:\s*([\s\S]*?)(?=\s*,\s*["']|\s*\}|$)/);
+
+                  if (actionMatch && promptMatch) {
+                    const action = actionMatch[1];
+                    let prompt = promptMatch[1].trim();
+                    // Clean up trailing quotes if present
+                    if (prompt.endsWith('"') || prompt.endsWith("'")) prompt = prompt.slice(0, -1);
+
+                    return {
+                      data: { action, prompt, duration: 30 },
+                      raw: jsonStr
+                    };
                   }
                 }
               }
             }
+          }
 
-            if (endIndex !== -1) {
-              const jsonStr = text.substring(startIndex, endIndex);
-              try {
-                const parsed = JSON.parse(jsonStr); // Strict JSON header check
-                return { data: parsed, raw: jsonStr };
-              } catch (e) {
-                // Try loose parsing (e.g. if keys are not quoted or single quoted)
-                // We can't use eval safely, but we can try simple regex extraction if strict parse failed
-                console.warn("[MEDIA GEN] Strict JSON parse failed, trying fallback regex extraction...");
+          // 2. Fallback: classic greedy Regex (works for 99% of simple cases)
+          // Matches { ... "action": "generate_video" ... }
+          const simpleRegex = /\{[\s\S]*?["']action["']\s*:\s*["'](generate_video|generate_image|modify_image|generate_audio)["'][\s\S]*?\}/;
+          const simpleMatch = text.match(simpleRegex);
+          if (simpleMatch) {
+            try {
+              return { data: JSON.parse(simpleMatch[0]), raw: simpleMatch[0] };
+            } catch (e) {
+              console.error("[MEDIA GEN] Fallback regex matched but parse failed:", e.message);
+            }
+          }
+
+          // 3. Fallback for Array format [ { ... } ]
+          const arrayRegex = /\[\s*\{[\s\S]*?["']action["']\s*:\s*["'](generate_video|generate_image|modify_image|generate_audio)["'][\s\S]*?\}\s*\]/;
+          const arrayMatch = text.match(arrayRegex);
+          if (arrayMatch) {
+            try {
+              const arr = JSON.parse(arrayMatch[0]);
+              if (Array.isArray(arr) && arr[0]) {
+                return { data: arr[0], raw: arrayMatch[0] };
               }
+            } catch (e) {
+              console.error("[MEDIA GEN] Array regex matched but parse failed:", e.message);
             }
           }
-        }
 
-        // 2. Fallback: classic greedy Regex (works for 99% of simple cases)
-        // Matches { ... "action": "generate_video" ... }
-        const simpleRegex = /\{[\s\S]*?["']action["']\s*:\s*["'](generate_video|generate_image)["'][\s\S]*?\}/;
-        const simpleMatch = text.match(simpleRegex);
-        if (simpleMatch) {
-          try {
-            return { data: JSON.parse(simpleMatch[0]), raw: simpleMatch[0] };
-          } catch (e) {
-            console.error("[MEDIA GEN] Fallback regex matched but parse failed:", e.message);
-          }
-        }
+          return null;
+        };
 
-        // 3. Fallback for Array format [ { ... } ]
-        const arrayRegex = /\[\s*\{[\s\S]*?["']action["']\s*:\s*["'](generate_video|generate_image)["'][\s\S]*?\}\s*\]/;
-        const arrayMatch = text.match(arrayRegex);
-        if (arrayMatch) {
-          try {
-            const arr = JSON.parse(arrayMatch[0]);
-            if (Array.isArray(arr) && arr[0]) {
-              return { data: arr[0], raw: arrayMatch[0] };
-            }
-          } catch (e) {
-            console.error("[MEDIA GEN] Array regex matched but parse failed:", e.message);
-          }
-        }
+        const extracted = extractActionJson(reply);
 
-        return null;
-      };
+        if (extracted) {
+          const { data, raw } = extracted;
+          console.log(`[MEDIA GEN] Found trigger JSON: ${raw}`);
 
-      const extracted = extractActionJson(reply);
-
-      if (extracted) {
-        const { data, raw } = extracted;
-        console.log(`[MEDIA GEN] Found trigger JSON: ${raw}`);
-
-        // REMOVE processed JSON from the reply text immediately
-        reply = reply.replace(raw, '').trim();
-
-        if (data.action === 'generate_video' && data.prompt) {
-          console.log(`[VIDEO GEN] Calling generator for: ${data.prompt}`);
-          const videoUrl = await generateVideoFromPrompt(data.prompt, 5, 'medium');
-          if (videoUrl) {
-            finalResponse.videoUrl = videoUrl;
-            finalResponse.reply = (reply && reply.trim()) ? reply : `Sure, I've generated a video based on your request: "${data.prompt.substring(0, 50)}..."`;
+          // REMOVE processed JSON from the reply text immediately
+          // Also handle markdown code block wrappers if they exist
+          const markdownWrapperRegex = new RegExp(`\`\`\`(?:json|text|plain)?\\s*${raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\`\`\``, 'g');
+          if (markdownWrapperRegex.test(reply)) {
+            reply = reply.replace(markdownWrapperRegex, '').trim();
           } else {
-            finalResponse.reply = (reply && reply.trim()) ? reply : "I attempted to generate a video but encountered an error.";
+            reply = reply.replace(raw, '').trim();
           }
-        }
-        else if (data.action === 'generate_image' && data.prompt) {
-          console.log(`[IMAGE GEN] Calling generator for: ${data.prompt}`);
-          // Use a shorter version of prompt for Fallback just in case
-          const safePrompt = data.prompt.length > 400 ? data.prompt.substring(0, 400) : data.prompt;
 
-          try {
-            const imageUrl = await generateImageFromPrompt(data.prompt);
-            if (imageUrl) {
-              finalResponse.imageUrl = imageUrl;
-              finalResponse.reply = (reply && reply.trim()) ? reply : "Here is the image you requested.";
+          if (data.action === 'generate_video' && data.prompt) {
+            console.log(`[VIDEO GEN] Calling generator for: ${data.prompt}`);
+            const videoUrl = await generateVideoFromPrompt(data.prompt, 5, 'medium');
+            if (videoUrl) {
+              finalResponse.videoUrl = videoUrl;
+              finalResponse.reply = (reply && reply.trim()) ? reply : `Sure, I've generated a video based on your request: "${data.prompt.substring(0, 50)}..."`;
+            } else {
+              finalResponse.reply = (reply && reply.trim()) ? reply : "I attempted to generate a video but encountered an error.";
             }
-          } catch (imgError) {
-            console.error(`[IMAGE GEN] Vertex AI failed:`, imgError.message);
-            // Return error message to user instead of using Pollinations
-            finalResponse.reply = `I encountered an error generating the image: ${imgError.message}. Please check your Vertex AI configuration or try again.`;
+          }
+          else if (data.action === 'generate_image' && data.prompt) {
+            console.log(`[IMAGE GEN] Calling generator for: ${data.prompt}`);
+            // Use a shorter version of prompt for Fallback just in case
+            const safePrompt = data.prompt.length > 400 ? data.prompt.substring(0, 400) : data.prompt;
+
+            try {
+              const imageUrl = await generateImageFromPrompt(data.prompt);
+              if (imageUrl) {
+                finalResponse.imageUrl = imageUrl;
+                finalResponse.reply = (reply && reply.trim()) ? reply : "Here is the image you requested.";
+              }
+            } catch (imgError) {
+              console.error(`[IMAGE GEN] Vertex AI failed:`, imgError.message);
+              // Return error message to user instead of using Pollinations
+              finalResponse.reply = `I encountered an error generating the image: ${imgError.message}. Please check your Vertex AI configuration or try again.`;
+            }
+          }
+          else if (data.action === 'modify_image' && data.prompt) {
+            console.log(`[IMAGE EDIT] Calling modifier for: ${data.prompt}`);
+            // Extract base64 image from attachments (Check both image and allAttachments)
+            const firstImgObj = (Array.isArray(image) ? image[0] : image) || allAttachments.find(a => a.mimeType?.startsWith('image/') || a.type === 'image');
+            const base64Img = firstImgObj?.base64Data || (typeof firstImgObj === 'string' ? firstImgObj : null);
+
+            if (base64Img) {
+              try {
+                const imageUrl = await modifyImageFromPrompt(data.prompt, base64Img);
+                if (imageUrl) {
+                  finalResponse.imageUrl = imageUrl;
+                  finalResponse.reply = (reply && reply.trim()) ? reply : "I've successfully modified the image based on your request!";
+                }
+              } catch (editError) {
+                console.error(`[IMAGE EDIT] Vertex AI failed:`, editError.stack || editError.message);
+                finalResponse.reply = `I encountered an error while editing the image: ${editError.message}. Please try again later.`;
+              }
+            } else {
+              console.warn("[IMAGE EDIT] Attempted but NO base64 image found in attachments.");
+              finalResponse.reply = "I understand you want to edit an image, but I couldn't find the source image in your message. Please upload an image and tell me what to change.";
+            }
+          }
+          else if (data.action === 'generate_audio' && data.prompt) {
+            console.log(`[AUDIO GEN] Triggered for music: ${data.prompt}`);
+            try {
+              const audioUrl = await generateMusicFromPrompt(data.prompt, 30);
+              if (audioUrl) {
+                finalResponse.audioUrl = audioUrl;
+                console.log(`[AUDIO GEN] Success! Audio URL: ${audioUrl}`);
+                finalResponse.reply = (reply && reply.trim()) ? reply : `I've generated some high-fidelity music based on your request using Google's Lyria model. 🎵\n\n**Music Style**: ${data.prompt.substring(0, 100)}...`;
+              } else {
+                finalResponse.reply = "I attempted to generate music but couldn't get the audio data. Please try a different prompt.";
+              }
+            } catch (musicError) {
+              console.error(`[AUDIO GEN] Lyria failed:`, musicError.message);
+              finalResponse.reply = `I encountered an error while generating music: ${musicError.message}. This model may still be in limited preview in your region.`;
+            }
           }
         }
-      }
 
-      // 2. Check for Markdown Image triggers (Support frontend instructions)
-      if (!finalResponse.imageUrl) {
-        const mdImageRegex = /!\[Image\]\((https:\/\/image\.pollinations\.ai\/prompt\/([^?)]+)[^)]*)\)/;
-        const mdMatch = reply.match(mdImageRegex);
-        if (mdMatch) {
-          console.log("[MEDIA GEN] Found Pollinations markdown trigger.");
-          finalResponse.imageUrl = mdMatch[1];
-          // Remove the markdown tag from text to avoid double display
-          reply = reply.replace(mdMatch[0], '').trim();
-          finalResponse.reply = (reply && reply.trim()) ? reply : "Here is the image you requested.";
+        // 2. Check for Markdown Image triggers (Support frontend instructions)
+        if (!finalResponse.imageUrl) {
+          const mdImageRegex = /!\[Image\]\((https:\/\/image\.pollinations\.ai\/prompt\/([^?)]+)[^)]*)\)/;
+          const mdMatch = reply.match(mdImageRegex);
+          if (mdMatch) {
+            console.log("[MEDIA GEN] Found Pollinations markdown trigger.");
+            finalResponse.imageUrl = mdMatch[1];
+            // Remove the markdown tag from text to avoid double display
+            reply = reply.replace(mdMatch[0], '').trim();
+            finalResponse.reply = (reply && reply.trim()) ? reply : "Here is the image you requested.";
+          }
+        }
+
+        // Final cleanup: Remove backticks and language tags if the model output the JSON inside a code block
+        reply = reply.replace(/```json\s*|```text\s*|```plain\s*|```\s*/g, '').replace(/```/g, '').trim();
+        // Ensure finalResponse.reply has a value if we didn't hit the blocks above
+        if (!finalResponse.reply && !finalResponse.imageUrl && !finalResponse.videoUrl) {
+          finalResponse.reply = reply || "Processed your request.";
+        } else if (!finalResponse.reply) {
+          finalResponse.reply = reply; // Sync back just in case
         }
       }
-
-      // Final cleanup: Remove backticks if the model output the JSON inside a code block
-      reply = reply.replace(/```json\s*```|```\s*```/g, '').trim();
-      // Ensure finalResponse.reply has a value if we didn't hit the blocks above
-      if (!finalResponse.reply && !finalResponse.imageUrl && !finalResponse.videoUrl) {
-        finalResponse.reply = reply || "Processed your request.";
-      } else if (!finalResponse.reply) {
-        finalResponse.reply = reply; // Sync back just in case
-      }
-
     } catch (e) {
       console.warn("[MEDIA GEN] Critical failure in media handling logic:", e);
     }
@@ -789,7 +871,16 @@ Stack: ${err.stack}
       });
     }
 
-    return res.status(statusCode).json({ error: "AI failed to respond", details: err.message });
+    // Improved error reporting for UI
+    const errorDetails = err.message || "Unknown AI error";
+    const userFriendlyMessage = `System Message: AI failed to respond - ${errorDetails}. Please try again later or check your network.`;
+
+    return res.status(200).json({
+      success: true,
+      reply: userFriendlyMessage,
+      error: "AI failed to respond",
+      details: errorDetails
+    });
   }
 });
 // Get all chat sessions (summary) for the authenticated user or guest
@@ -1146,8 +1237,19 @@ router.patch('/:sessionId/message/:messageId', optionalVerifyToken, identifyGues
     res.json(updatedSession);
 
   } catch (err) {
-    console.error(`[UPDATE MSG ERROR] ${err.message}`);
-    res.status(500).json({ error: 'Failed to update message' });
+    console.error(`[CHAT ERROR] ${err.message}`);
+    const statusCode = err.status || 200; // Return 200 with error message for better UI handling
+
+    // Improved error reporting for UI
+    const errorDetails = err.message || "Unknown AI error";
+    const userFriendlyMessage = `System Message: AI failed to respond - ${errorDetails}. Please try again later or check your network.`;
+
+    res.status(statusCode).json({
+      success: true,
+      reply: userFriendlyMessage,
+      error: "AI failed to respond",
+      details: errorDetails
+    });
   }
 });
 

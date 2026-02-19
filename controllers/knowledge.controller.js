@@ -9,7 +9,7 @@ import { uploadToCloudinary } from '../services/cloudinary.service.js';
 import mammoth from 'mammoth';
 import xlsx from 'xlsx';
 import officeParser from 'officeparser';
-import Tesseract from 'tesseract.js';
+import { performOCR } from '../utils/ocrService.js';
 
 const pipeline = util.promisify(stream.pipeline);
 
@@ -76,15 +76,7 @@ export const uploadDocument = async (req, res) => {
                 textContent = "PPTX parsing failed.";
             }
         } else if (mimeType.startsWith('image/')) {
-            try {
-                logger.info(`Starting OCR for Image...`);
-                const { data: { text } } = await Tesseract.recognize(fileBuffer, 'eng');
-                textContent = text;
-                logger.info(`OCR Complete. Extracted ${textContent.length} chars.`);
-            } catch (ocrError) {
-                logger.error(`OCR Failed: ${ocrError.message}`);
-                textContent = "Image text extraction failed.";
-            }
+            textContent = await performOCR(fileBuffer);
         } else if (mimeType === 'text/plain') {
             textContent = fileBuffer.toString('utf8');
         } else {

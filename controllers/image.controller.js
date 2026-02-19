@@ -36,8 +36,7 @@ export const generateImageFromPrompt = async (prompt) => {
 
         console.log(`[VERTEX IMAGE] Token obtained successfully`);
 
-        // IMPORTANT: Imagen 3.0 is ONLY available in us-central1, NOT in asia-south1
-        // Even though chat uses asia-south1, images MUST use us-central1
+        // Both chat and images now use us-central1 for consistency and model availability
         const location = 'us-central1';
         // Use Imagen 3.0 Generate 002 (Latest stable)
         const modelId = 'imagen-3.0-generate-002';
@@ -89,6 +88,108 @@ export const generateImageFromPrompt = async (prompt) => {
 
         // Return detailed error instead of falling back to Pollinations
         throw new Error(`Vertex AI Image Generation failed: ${errorMsg}`);
+    }
+};
+
+// Helper function to modify image using Vertex AI (Image to Image / Inpainting)
+export const modifyImageFromPrompt = async (prompt, base64Image) => {
+    try {
+        console.log(`[VERTEX IMAGE EDIT] Triggered for: "${prompt.substring(0, 50)}..."`);
+
+        if (!process.env.GCP_PROJECT_ID) {
+            throw new Error("GCP_PROJECT_ID is required for Vertex AI.");
+        }
+
+        const auth = new GoogleAuth({
+            scopes: ['https://www.googleapis.com/auth/cloud-platform'],
+            projectId: process.env.GCP_PROJECT_ID
+        });
+
+        const client = await auth.getClient();
+        const projectId = process.env.GCP_PROJECT_ID;
+        const accessTokenResponse = await client.getAccessToken();
+        const token = accessTokenResponse.token || accessTokenResponse;
+
+        if (!token) throw new Error("Failed to obtain access token.");
+
+        // For image editing, us-central1 is the standard location
+        const location = 'us-central1';
+        const modelId = 'imagen-3.0-capability-001';
+        // Use v1beta1 as capability models are often in preview/beta
+        const endpoint = `https://${location}-aiplatform.googleapis.com/v1beta1/projects/${projectId}/locations/${location}/publishers/google/models/${modelId}:predict`;
+
+        console.log(`[VERTEX IMAGE EDIT] Calling Imagen 3 endpoint for modification...`);
+
+        // Clean base64 image (strip data:image/...;base64, prefix if present)
+        const cleanBase64 = base64Image.includes('base64,') ? base64Image.split('base64,')[1] : base64Image;
+
+        // Detect if the user wants background removal
+        const isBackgroundRemoval = prompt.toLowerCase().includes('remove background') ||
+            prompt.toLowerCase().includes('bg removal') ||
+            prompt.toLowerCase().includes('background remove');
+
+        const payload = {
+            instances: [
+                {
+                    prompt: prompt,
+                    referenceImages: [
+                        {
+                            referenceId: 1,
+                            referenceType: "REFERENCE_TYPE_RAW",
+                            image: { bytesBase64Encoded: cleanBase64 }
+                        }
+                    ]
+                }
+            ],
+            parameters: {
+                sampleCount: 1,
+                // Imagen 3 edit modes
+                editMode: isBackgroundRemoval ? "EDIT_MODE_INPAINT_REMOVAL" : "EDIT_MODE_DEFAULT",
+                aspectRatio: "1:1",
+                safetySetting: "BLOCK_ONLY_HIGH"
+            }
+        };
+
+        // If background removal, help the model by specifying to look at the background
+        if (isBackgroundRemoval) {
+            payload.instances[0].maskConfig = {
+                maskMode: "MASK_MODE_BACKGROUND"
+            };
+        }
+
+        const response = await axios.post(
+            endpoint,
+            payload,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 60000 // Image editing can take longer
+            }
+        );
+
+        if (response.data && response.data.predictions && response.data.predictions[0]) {
+            const prediction = response.data.predictions[0];
+            const resultBase64 = prediction.bytesBase64Encoded || (typeof prediction === 'string' ? prediction : null);
+
+            if (resultBase64) {
+                console.log(`[VERTEX IMAGE EDIT] Modifed image received successfully.`);
+                const buffer = Buffer.from(resultBase64, 'base64');
+                const cloudResult = await uploadToCloudinary(buffer, {
+                    folder: 'edited_images',
+                    public_id: `edit_${Date.now()}`
+                });
+                return cloudResult.secure_url;
+            }
+        }
+
+        throw new Error('Vertex AI Edit response format unexpected or empty.');
+
+    } catch (error) {
+        const errorMsg = error.response?.data?.error?.message || error.message || "Unknown error";
+        console.error(`[VERTEX IMAGE EDIT ERROR] ${errorMsg}`);
+        throw new Error(`Vertex AI Image Editing failed: ${errorMsg}`);
     }
 };
 
