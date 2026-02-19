@@ -58,11 +58,31 @@ connectDB().then(async () => {
 
 // Middleware
 
+// Debug CORS
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:8080",
+  "https://a-series-743928421487.asia-south1.run.app", // Hardcoded fallback
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
+console.log("Allowed CORS Origins:", allowedOrigins);
+
 app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:8080",process.env.FRONTEND_URL] ,// Allow any origin in development
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1 || origin === process.env.FRONTEND_URL) {
+      callback(null, true);
+    } else {
+      console.log(`[CORS BLOCK] Origin: ${origin} not allowed`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-device-fingerprint']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-device-fingerprint', 'Access-Control-Allow-Origin']
 }));
 app.use(cookieParser())
 app.use(express.json({ limit: "50mb" }));
