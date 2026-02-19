@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 # Install system dependencies if needed (e.g. for image processing)
 # RUN apk add --no-cache python3 make g++ 
@@ -22,4 +22,4 @@ ENV PORT=8080
 EXPOSE 8080
 
 # Start the application
-CMD ["npm", "start"]
+CMD ["node", "server.js"]
