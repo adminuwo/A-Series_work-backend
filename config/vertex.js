@@ -8,8 +8,8 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // FORCE VERTEX AI ONLY
-const projectId = process.env.GCP_PROJECT_ID || 'ai-mall-484810';
-const location = 'us-central1'; // Better model availability (Gemini 2.0)
+const projectId = process.env.GCP_PROJECT_ID;
+const location = 'asia-south1'; // Better model availability (Gemini 2.0)
 const keyFilePath = path.join(__dirname, '../../google_cloud_credentials.json');
 
 let vertexAI;

@@ -59,7 +59,7 @@ connectDB().then(async () => {
 // Middleware
 
 app.use(cors({
-  origin: true, // Allow any origin in development
+  origin: ["http://localhost:5173", "http://localhost:8080",process.env.FRONTEND_URL] ,// Allow any origin in development
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-device-fingerprint']
