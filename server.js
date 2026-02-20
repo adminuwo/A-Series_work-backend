@@ -62,7 +62,6 @@ connectDB().then(async () => {
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:8080",
-  "https://a-series-743928421487.asia-south1.run.app", // Hardcoded fallback
   process.env.FRONTEND_URL
 ].filter(Boolean);
 
