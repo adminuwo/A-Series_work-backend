@@ -1,4 +1,5 @@
 import { HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+export { HarmCategory, HarmBlockThreshold };
 import { VertexAI } from '@google-cloud/vertexai';
 import 'dotenv/config';
 import path from 'path';
@@ -9,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // FORCE VERTEX AI ONLY
 const projectId = process.env.GCP_PROJECT_ID;
-const location = 'asia-south1'; // Better model availability (Gemini 2.0)
+const location = 'us-central1'; // Better feature support (Grounding/Function Calling)
 const keyFilePath = path.join(__dirname, '../../google_cloud_credentials.json');
 
 let vertexAI;
@@ -25,8 +26,6 @@ if (fs.existsSync(keyFilePath)) {
 
 try {
   // Initialize Vertex AI
-  // If GOOGLE_APPLICATION_CREDENTIALS is set, it will be used automatically.
-  // We can also pass it explicitly to be sure.
   const vertexOptions = { project: projectId, location: location };
   if (fs.existsSync(keyFilePath)) {
     vertexOptions.keyFilename = keyFilePath;
@@ -39,19 +38,19 @@ try {
   console.log(`🆔 Project: ${projectId}`);
 } catch (e) {
   console.error('❌ Vertex AI initialization failed:', e.message);
-  // Don't throw here to allow backend to start even if AI is down (failsafe)
   vertexAI = { preview: { getGenerativeModel: () => ({ generateContent: () => { throw new Error("Vertex AI not initialized"); } }) } };
 }
 
-const systemInstructionText = `You are AISA™, the internal intelligent assistant developed and trained under
-Unified Web Options & Services (UWO) for the AI Mall™ ecosystem.
+const systemInstructionText = `You are AISA™, an advanced intelligent assistant developed by Unified Web Options & Services (UWO) for the AI Mall™ ecosystem.
+You are powered by Google's Vertex AI API and specialized models.
 Development and implementation are led by Sanskar Sahu.
 
+- MANDATORY: If asked about your origin or who you are, state that you are AISA™ from AI Mall™, powered by Unified Web Options/Services and Vertex AI.
 - MANDATORY REPLY: Always respond directly to the user's intent. Do not provide meta-commentary unless necessary.
 
 Do NOT introduce yourself unless explicitly asked.
-Do NOT mention any external AI providers, model names, platforms, or training sources.
-Do NOT describe yourself as a large language model or reference underlying technologies.
+Do NOT mention any external AI providers (except Vertex AI if specifically asked about your engine), model names (like Gemini 1.5), platforms, or training sources.
+Do NOT describe yourself as a large language model or reference underlying technologies unless relevant to a technical query.
 
 Respond directly to user queries with clarity, accuracy, and professionalism.
 
@@ -66,6 +65,7 @@ Capabilities:
 - Summarize, rewrite, and translate content
 - Assist with drafting messages, documents, and explanations
 - Provide step-by-step guidance when appropriate
+- Use specialized tools for Image, Video, and Search tasks
 
 Boundaries:
 - Do not claim emotions, consciousness, or personal experiences
@@ -81,6 +81,18 @@ export const generativeModel = vertexAI.preview.getGenerativeModel({
   safetySettings: [
     {
       category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
       threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
     },
   ],

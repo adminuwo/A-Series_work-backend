@@ -99,3 +99,33 @@ export const generateMusicFromPrompt = async (prompt, duration = 30) => {
         throw error;
     }
 };
+
+/**
+ * @desc    Generate Music Route
+ * @route   POST /api/audio/generate
+ */
+export const generateMusic = async (req, res, next) => {
+    try {
+        const { prompt, duration } = req.body;
+        if (!prompt) return res.status(400).json({ success: false, message: 'Prompt is required' });
+
+        const audioUrl = await generateMusicFromPrompt(prompt, duration || 30);
+
+        // Use Vertex AI to narrate the result
+        const aiResponse = await vertexService.askVertex(
+            `I have generated music based on your prompt: "${prompt}".`,
+            null,
+            { systemInstruction: "You are a creative music assistant. Briefly describe the generated music based on the user's prompt." }
+        );
+
+        res.status(200).json({
+            success: true,
+            reply: aiResponse,
+            audioUrl: audioUrl
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+import vertexService from '../services/vertex.service.js';

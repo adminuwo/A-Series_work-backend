@@ -330,6 +330,24 @@ const toolsToSeed = [
         fullDesc: "Orchestrates personalized travel experiences, from initial planning to real-time itinerary alerts throughout the user's journey.",
         features: ["Itinerary Planning", "Real-time Alerts", "Travel Concierge", "Booking Assistance"],
         bgGradient: "bg-gradient-to-br from-amber-400 to-orange-600"
+    },
+    {
+        agentName: "Derm Foundation",
+        slug: "tool-derm-foundation",
+        description: "Advanced AI-powered Dermatological Analysis Assistant.",
+        category: "Medical & Health",
+        avatar: "/AGENTS_IMG/dermatology.png",
+        status: "Live",
+        pricingModel: "Free",
+        pricing: { type: "Free", plans: [] },
+        fullDesc: "Analyze skin images for condition identification, severity assessment, and basic guidance. Powered by Google Vertex AI.",
+        features: [
+            "Skin Condition Identification",
+            "Severity Assessment",
+            "Dermatological Explanations",
+            "Skincare Guidance"
+        ],
+        bgGradient: "bg-gradient-to-br from-rose-400 to-pink-600"
     }
 ];
 

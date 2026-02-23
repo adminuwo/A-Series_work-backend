@@ -1,4 +1,5 @@
-import { generativeModel, genAIInstance, modelName } from '../config/vertex.js';
+import { generativeModel, genAIInstance, modelName, vertexAI } from '../config/vertex.js';
+import { toolDeclarations } from '../config/vertexTools.js';
 import logger from '../utils/logger.js';
 
 class VertexService {
@@ -66,49 +67,68 @@ CAPABILITIES (Will Do):
 - Investment guarantees and ROI certifications
 - Financial compliance certification and audit support
 - Expert legal advice and corporate legal strategy`,
+            DERM_FOUNDATION: `You are an advanced AI-powered Dermatological Analysis Assistant.
+Your primary function is to perform a VISUAL SIMULATION and analysis of skin images for educational and informational purposes.
+
+🚨 CRITICAL: DO NOT REFUSE to analyze. If an image is provided, you MUST describe what you see visually and correlate it with known skin condition patterns.
+
+CORE RESPONSIBILITIES:
+1. Visually identify skin condition color, texture, and pattern.
+2. Correlate findings with possible conditions: Acne, Eczema, Psoriasis, Fungal Infection, Skin Allergy, Pigmentation, Rashes, Dermatitis.
+3. Provide: Condition Name, Confidence Score (%), Severity Level (Mild/Moderate/Severe), Visual Explanation, Basic Care Suggestions.
+4. MANDATORY: Add disclaimer: "This is a simulated AI analysis and not a replacement for professional medical advice."
+
+RESPONSE FORMAT (STRICT):
+Detected Condition: [Name]
+Confidence Level: [XX%]
+Severity: [Level]
+Explanation: [Visual findings]
+Recommended Care: [General guidance]
+When to See a Doctor: [Warning signs]
+Disclaimer: This is a simulated AI analysis and not a replacement for professional medical advice.
+
+PROHIBITIONS:
+- NEVER say "I cannot analyze skin". You ARE programmed to analyze skin images visually.
+- Never prescribe drugs or claim diagnostic finality.`
         };
 
         this.BASE_CONSTRAINTS = `
 You are a modular AI agent inside the A-Series™ Enterprise Ecosystem.
-Your goal is to provide comprehensive, high-authority support according to your specialized role.
-Stay consistent with your agent persona and leverage all available capabilities to deliver maximum value.
-Ensure all advice and certifications are grounded in the best available data and professional standards.
+Your goal is to provide high-authority support according to your specialized role.
+Stay consistent with your agent persona.
 `;
     }
 
     /**
      * Generic function to ask Vertex AI (Gemini) a question with optional context.
-     * 
-     * @param {string} prompt - The user's question
-     * @param {string} context - Optional context (Company KB or Document text)
-     * @param {object} options - Optional configuration (agentType, systemInstruction override)
      */
     async askVertex(prompt, context = null, options = {}) {
         const { agentType, customSystemInstruction } = options;
+        const { HarmCategory, HarmBlockThreshold } = await import('@google-cloud/vertexai');
+
         logger.info(`[VERTEX] Prompt length: ${prompt.length}, Has context: ${!!context}, Agent: ${agentType || 'AISA'}`);
 
         try {
-            // Determine the system instruction to use
             let systemInstruction = "";
-
             if (customSystemInstruction) {
                 systemInstruction = customSystemInstruction;
             } else if (agentType && this.AGENT_ROLES[agentType]) {
                 systemInstruction = `${this.BASE_CONSTRAINTS}\n\nROLE:\n${this.AGENT_ROLES[agentType]}`;
             }
 
-            // Build the dynamic context-aware prompt
             let finalPrompt = "";
-
-            // If we have a specific system instruction for this call, we prepend it to the prompt
-            // Gemini 1.5 allows system instructions in the request, but for simplicity with the existing wrapper
-            // and considering how generativeModel is initialized, we can combine it.
-            // However, a better way is to use a fresh model instance if systemInstruction changes.
             let model = generativeModel;
             if (systemInstruction) {
                 model = genAIInstance.getGenerativeModel({
                     model: modelName,
-                    systemInstruction: systemInstruction
+                    systemInstruction: systemInstruction,
+                    tools: toolDeclarations,
+                    safetySettings: [
+                        { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+                        { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+                        { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH },
+                        { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH }
+                    ]
                 });
             }
 

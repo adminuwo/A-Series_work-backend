@@ -41,6 +41,10 @@ import paymentRoutes from './routes/paymentRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
 import imageRoute from './routes/image.routes.js';
 import videoRoutes from './routes/videoRoutes.js';
+import audioRoutes from './routes/audioRoutes.js';
+import searchRoutes from './routes/searchRoutes.js';
+import conversionRoutes from './routes/conversionRoutes.js';
+import reminderRoutes from './routes/reminderRoutes.js';
 
 
 dotenv.config();
@@ -120,6 +124,10 @@ app.use('/api/chat', chatRoutes);
 // Image & Video Gen Routes
 app.use('/api/image', imageRoute);
 app.use('/api/video', videoRoutes);
+app.use('/api/audio', audioRoutes);
+app.use('/api/conversion', conversionRoutes);
+app.use('/api/reminders', reminderRoutes);
+app.use('/api/search', searchRoutes);
 
 
 // Auth Routes: /api/auth/login, /api/auth/signup

@@ -1205,3 +1205,77 @@ Depending on your run time environment, you can get authentication by
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async file:///C:/Users/sansk/Desktop/A-Series/Backend/routes/chatRoutes.js:568:19
 -------------------------------------------
+
+Timestamp: 2026-02-21T06:28:45.955Z
+Error: Model generation failed: [VertexAI.GoogleAuthError]: 
+Unable to authenticate your request        
+Depending on your run time environment, you can get authentication by        
+- if in local instance or cloud shell: `!gcloud auth login`        
+- if in Colab:        
+    -`from google.colab import auth`        
+    -`auth.authenticate_user()`        
+- if in service account or other: please follow guidance in https://cloud.google.com/docs/authentication
+Code: undefined
+Env Project: ai-mall-484810
+Env Creds Path: 'undefined'
+Creds File Exists: N/A
+Stack: Error: Model generation failed: [VertexAI.GoogleAuthError]: 
+Unable to authenticate your request        
+Depending on your run time environment, you can get authentication by        
+- if in local instance or cloud shell: `!gcloud auth login`        
+- if in Colab:        
+    -`from google.colab import auth`        
+    -`auth.authenticate_user()`        
+- if in service account or other: please follow guidance in https://cloud.google.com/docs/authentication
+    at attemptGeneration (file:///C:/Users/sansk/Desktop/A-Series/Backend/routes/chatRoutes.js:573:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async file:///C:/Users/sansk/Desktop/A-Series/Backend/routes/chatRoutes.js:584:19
+-------------------------------------------
+
+Timestamp: 2026-02-21T06:53:15.133Z
+Error: Model generation failed: [VertexAI.ClientError]: got status: 400 Bad Request. {"error":{"code":400,"message":"Unable to submit request because google_search_retrieval is not supported; please use google_search field instead. Learn more: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/gemini","status":"INVALID_ARGUMENT"}}
+Code: undefined
+Env Project: ai-mall-484810
+Env Creds Path: 'undefined'
+Creds File Exists: N/A
+Stack: Error: Model generation failed: [VertexAI.ClientError]: got status: 400 Bad Request. {"error":{"code":400,"message":"Unable to submit request because google_search_retrieval is not supported; please use google_search field instead. Learn more: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/gemini","status":"INVALID_ARGUMENT"}}
+    at attemptGeneration (file:///C:/Users/sansk/Desktop/A-Series/Backend/routes/chatRoutes.js:645:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async file:///C:/Users/sansk/Desktop/A-Series/Backend/routes/chatRoutes.js:656:19
+-------------------------------------------
+
+Timestamp: 2026-02-21T06:54:02.362Z
+Error: Model generation failed: [VertexAI.ClientError]: got status: 400 Bad Request. {"error":{"code":400,"message":"Unable to submit request because google_search_retrieval is not supported; please use google_search field instead. Learn more: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/gemini","status":"INVALID_ARGUMENT"}}
+Code: undefined
+Env Project: ai-mall-484810
+Env Creds Path: 'undefined'
+Creds File Exists: N/A
+Stack: Error: Model generation failed: [VertexAI.ClientError]: got status: 400 Bad Request. {"error":{"code":400,"message":"Unable to submit request because google_search_retrieval is not supported; please use google_search field instead. Learn more: https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/gemini","status":"INVALID_ARGUMENT"}}
+    at attemptGeneration (file:///C:/Users/sansk/Desktop/A-Series/Backend/routes/chatRoutes.js:645:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async file:///C:/Users/sansk/Desktop/A-Series/Backend/routes/chatRoutes.js:656:19
+-------------------------------------------
+
+Timestamp: 2026-02-21T06:57:43.965Z
+Error: Model generation failed: [VertexAI.ClientError]: got status: 400 Bad Request. {"error":{"code":400,"message":"Multiple tools are supported only when they are all search tools.","status":"INVALID_ARGUMENT"}}
+Code: undefined
+Env Project: ai-mall-484810
+Env Creds Path: 'undefined'
+Creds File Exists: N/A
+Stack: Error: Model generation failed: [VertexAI.ClientError]: got status: 400 Bad Request. {"error":{"code":400,"message":"Multiple tools are supported only when they are all search tools.","status":"INVALID_ARGUMENT"}}
+    at attemptGeneration (file:///C:/Users/sansk/Desktop/A-Series/Backend/routes/chatRoutes.js:645:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async file:///C:/Users/sansk/Desktop/A-Series/Backend/routes/chatRoutes.js:656:19
+-------------------------------------------
+
+Timestamp: 2026-02-21T06:58:18.396Z
+Error: Model generation failed: [VertexAI.ClientError]: got status: 400 Bad Request. {"error":{"code":400,"message":"Multiple tools are supported only when they are all search tools.","status":"INVALID_ARGUMENT"}}
+Code: undefined
+Env Project: ai-mall-484810
+Env Creds Path: 'undefined'
+Creds File Exists: N/A
+Stack: Error: Model generation failed: [VertexAI.ClientError]: got status: 400 Bad Request. {"error":{"code":400,"message":"Multiple tools are supported only when they are all search tools.","status":"INVALID_ARGUMENT"}}
+    at attemptGeneration (file:///C:/Users/sansk/Desktop/A-Series/Backend/routes/chatRoutes.js:645:15)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async file:///C:/Users/sansk/Desktop/A-Series/Backend/routes/chatRoutes.js:656:19
+-------------------------------------------

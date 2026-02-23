@@ -114,47 +114,69 @@ export const modifyImageFromPrompt = async (prompt, base64Image) => {
 
         // For image editing, us-central1 is the standard location
         const location = 'us-central1';
+        // Use Imagen 3.0 Capability model for editing to resolve EOL issues with imagegeneration@006
+        // Use imagen-3.0-capability-001 - The modern editing model for us-central1
         const modelId = 'imagen-3.0-capability-001';
-        // Use v1beta1 as capability models are often in preview/beta
+        // Use v1beta1 for the most inclusive support of Imagen 3 features
         const endpoint = `https://${location}-aiplatform.googleapis.com/v1beta1/projects/${projectId}/locations/${location}/publishers/google/models/${modelId}:predict`;
 
-        console.log(`[VERTEX IMAGE EDIT] Calling Imagen 3 endpoint for modification...`);
+        console.log(`[VERTEX IMAGE EDIT] Calling ${modelId} endpoint for task...`);
 
         // Clean base64 image (strip data:image/...;base64, prefix if present)
         const cleanBase64 = base64Image.includes('base64,') ? base64Image.split('base64,')[1] : base64Image;
 
-        // Detect if the user wants background removal
-        const isBackgroundRemoval = prompt.toLowerCase().includes('remove background') ||
-            prompt.toLowerCase().includes('bg removal') ||
-            prompt.toLowerCase().includes('background remove');
+        // Detect if the user wants background removal or general removal
+        const lowerPrompt = prompt.toLowerCase();
+        const isBackgroundRemoval = lowerPrompt.includes('remove background') ||
+            lowerPrompt.includes('bg removal') ||
+            lowerPrompt.includes('background remove');
+
+        const isGenericRemoval = lowerPrompt.includes('remove') || lowerPrompt.includes('erase') || lowerPrompt.includes('delete') || lowerPrompt.includes('hata') || lowerPrompt.includes('nikal');
 
         const payload = {
             instances: [
                 {
-                    prompt: prompt,
-                    referenceImages: [
-                        {
-                            referenceId: 1,
-                            referenceType: "REFERENCE_TYPE_RAW",
-                            image: { bytesBase64Encoded: cleanBase64 }
-                        }
-                    ]
+                    prompt: isBackgroundRemoval
+                        ? "remove background and make it transparent"
+                        : (isGenericRemoval ? `${prompt}. Ensure the removed areas are seamlessly filled with matching background textures.` : prompt),
+                    referenceImages: []
                 }
             ],
             parameters: {
                 sampleCount: 1,
-                // Imagen 3 edit modes
-                editMode: isBackgroundRemoval ? "EDIT_MODE_INPAINT_REMOVAL" : "EDIT_MODE_DEFAULT",
-                aspectRatio: "1:1",
-                safetySetting: "BLOCK_ONLY_HIGH"
+                includeTransparentBackground: true,
+                addWatermark: false,
+                safetyFilterLevel: "block_none",
+                guidanceScale: 75, // High guidance for strict adherence
+                negativePrompt: isGenericRemoval ? "text, characters, letters, words, watermark, blurry, distorted" : "blurry, distorted, low quality"
             }
         };
 
-        // If background removal, help the model by specifying to look at the background
+        // Add the primary RAW image (Required for all edits)
+        payload.instances[0].referenceImages.push({
+            referenceId: 0,
+            referenceType: "REFERENCE_TYPE_RAW",
+            referenceImage: {
+                bytesBase64Encoded: cleanBase64,
+                mimeType: "image/png"
+            }
+        });
+
+        // Specialized logic for background removal
         if (isBackgroundRemoval) {
-            payload.instances[0].maskConfig = {
-                maskMode: "MASK_MODE_BACKGROUND"
-            };
+            payload.parameters.editMode = "EDIT_MODE_BGSWAP";
+            payload.instances[0].referenceImages.push({
+                referenceId: 1,
+                referenceType: "REFERENCE_TYPE_MASK",
+                maskImageConfig: {
+                    maskMode: "MASK_MODE_BACKGROUND"
+                }
+            });
+            console.log(`[VERTEX IMAGE EDIT] Strategy: MASK_BASED_BG_REMOVAL`);
+        } else {
+            // For all other edits (including "remove text"), we use MASK-FREE mode
+            // This allows Imagen 3 to intelligently apply the prompt everywhere to the image.
+            console.log(`[VERTEX IMAGE EDIT] Strategy: MASK_FREE_GENERAL_EDIT`);
         }
 
         const response = await axios.post(
@@ -213,8 +235,16 @@ export const generateImage = async (req, res, next) => {
             throw new Error("Failed to retrieve image URL from any source.");
         }
 
+        // Use Vertex AI to narrate the result
+        const aiResponse = await vertexService.askVertex(
+            `I have generated an image for your prompt: "${prompt}".`,
+            null,
+            { systemInstruction: "You are a creative digital artist assistant. Briefly describe the generated image based on the prompt." }
+        );
+
         res.status(200).json({
             success: true,
+            reply: aiResponse,
             data: imageUrl
         });
     } catch (error) {
@@ -227,4 +257,6 @@ export const generateImage = async (req, res, next) => {
         });
     }
 };
+
+import vertexService from '../services/vertex.service.js';
 

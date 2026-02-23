@@ -28,8 +28,16 @@ export const generateVideo = async (req, res) => {
 
     logger.info(`[VIDEO] Video generated successfully: ${videoUrl}`);
 
+    // Use Vertex AI to narrate the result
+    const aiResponse = await vertexService.askVertex(
+      `I have generated a video for your prompt: "${prompt}".`,
+      null,
+      { systemInstruction: "You are a creative video director assistant. Briefly describe the generated video and express excitement about the result." }
+    );
+
     return res.status(200).json({
       success: true,
+      reply: aiResponse,
       videoUrl: videoUrl,
       prompt: prompt,
       duration: duration,
@@ -44,6 +52,8 @@ export const generateVideo = async (req, res) => {
     });
   }
 };
+
+import vertexService from '../services/vertex.service.js';
 
 // Function to generate video using Replicate or Fallback
 // Function to generate video using Vertex AI (Veo Model) or Fallback
